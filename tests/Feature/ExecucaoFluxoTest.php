@@ -71,6 +71,21 @@ class ExecucaoFluxoTest extends TestCase
         $this->assertSame(1, ExecucaoFluxo::where('contato_id', 1)->count());
     }
 
+    public function test_api_rejeita_envio_registra_erro(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*' => Http::response(['error' => ['message' => 'token invalido']], 400),
+        ]);
+
+        $fluxo = Fluxo::create(['nome' => 'Teste', 'ativo' => true]);
+        $fluxo->etapas()->create(['ordem' => 1, 'texto' => 'Primeira mensagem', 'pausa_segundos' => 0]);
+
+        (new ProcessarMensagemEntrante('12345', 'Olá'))->handle();
+
+        $this->assertSame(0, Mensagem::where('direcao', 'enviada')->count());
+        $this->assertSame(1, LogSistema::where('evento', 'erro_envio')->count());
+    }
+
     public function test_token_ausente_nao_envia_e_registra_erro(): void
     {
         config(['services.messenger.page_access_token' => null]);

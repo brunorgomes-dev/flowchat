@@ -41,14 +41,22 @@ class EnviarEtapaFluxo implements ShouldQueue
             return;
         }
 
-        if (! $this->enviarMensagem($execucao->contato->psid, $etapa->texto)) {
+        $contato = $execucao->contato;
+
+        $textoPersonalizado = str_replace(
+            ['{{nome}}', '{{id_contato}}'],
+            [$contato->nome ?: '', (string) $contato->psid],
+            $etapa->texto
+        );
+
+        if (! $this->enviarMensagem($contato->psid, $textoPersonalizado)) {
             return;
         }
 
         Mensagem::create([
             'contato_id' => $execucao->contato_id,
             'direcao' => 'enviada',
-            'texto' => $etapa->texto,
+            'texto' => $textoPersonalizado,
         ]);
         LogSistema::create(['evento' => 'mensagem_enviada', 'descricao' => "Etapa {$etapa->ordem} enviada ao PSID {$execucao->contato->psid}"]);
 
@@ -69,11 +77,22 @@ class EnviarEtapaFluxo implements ShouldQueue
             return false;
         }
 
-        $resposta = Http::post(config('services.messenger.api_url').'/me/messages', [
-            'recipient' => ['id' => $psid],
-            'message' => ['text' => $texto],
+        $resposta = Http::withToken(config('services.messenger.page_access_token'))
+            ->post(config('services.messenger.api_url').'/me/messages', [
+                'recipient' => ['id' => $psid],
+                'message' => ['text' => $texto],
+            ]);
+
+        if ($resposta->successful()) {
+            return true;
+        }
+
+        // Registra a rejeição da Graph API para permitir diagnóstico
+        LogSistema::create([
+            'evento' => 'erro_envio',
+            'descricao' => 'Graph API rejeitou o envio (HTTP '.$resposta->status().'): '.$resposta->body(),
         ]);
 
-        return $resposta->successful();
+        return false;
     }
 }

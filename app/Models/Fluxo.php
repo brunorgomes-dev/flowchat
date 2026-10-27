@@ -23,4 +23,9 @@ class Fluxo extends Model
     {
         return $this->hasMany(ExecucaoFluxo::class);
     }
+
+    public function regras(): HasMany
+    {
+        return $this->hasMany(RegraInicioFluxo::class);
+    }
 }

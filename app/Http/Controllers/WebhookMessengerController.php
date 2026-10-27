@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\ProcessarMensagemEntrante;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class WebhookMessengerController extends Controller
 {
@@ -30,12 +31,19 @@ class WebhookMessengerController extends Controller
     {
         foreach ($request->input('entry', []) as $entrada) {
             foreach ($entrada['messaging'] ?? [] as $evento) {
-                if (isset($evento['message'])) {
-                    ProcessarMensagemEntrante::dispatch(
-                        $evento['sender']['id'],
-                        $evento['message']['text'] ?? null
-                    );
+                if (! isset($evento['message'])) {
+                    continue;
                 }
+
+                $mid = $evento['message']['mid'] ?? null;
+                if (is_string($mid) && ! Cache::add('webhook:messenger:mid:'.$mid, true, now()->addDay())) {
+                    continue;
+                }
+
+                ProcessarMensagemEntrante::dispatch(
+                    $evento['sender']['id'],
+                    $evento['message']['text'] ?? null
+                );
             }
         }
 

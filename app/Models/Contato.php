@@ -6,6 +6,7 @@ use Database\Factories\ContatoFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Contato extends Model
 {
@@ -17,6 +18,11 @@ class Contato extends Model
     public function mensagens(): HasMany
     {
         return $this->hasMany(Mensagem::class);
+    }
+
+    public function ultimaMensagem(): HasOne
+    {
+        return $this->hasOne(Mensagem::class)->latestOfMany();
     }
 
     public function execucoesFluxo(): HasMany
