@@ -41,7 +41,7 @@ export default function PaginaInicial({ contatos, fluxos, mensagens, logs }) {
                                         <div className="flex min-w-0 items-center justify-between gap-3">
                                             <Link
                                                 href={`/contatos/${contato.id}/historico`}
-                                                className="truncate text-sm font-medium text-foreground transition-colors hover:text-terracota focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                                                className="truncate text-sm font-medium text-foreground transition-colors hover:text-terracota dark:hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                                             >
                                                 {contato.nome?.trim() || contato.psid}
                                             </Link>
@@ -72,12 +72,16 @@ export default function PaginaInicial({ contatos, fluxos, mensagens, logs }) {
                                     return (
                                         <li key={mensagem.id} className="min-w-0 py-3 first:pt-0 last:pb-0">
                                             <div className="flex items-baseline gap-2 text-xs">
-                                                <span className={mensagem.direcao === 'enviada' ? 'font-medium text-terracota-escuro' : 'font-medium text-muted-foreground'}>
+                                                <span className={mensagem.direcao === 'enviada' ? 'font-medium text-terracota-escuro dark:text-foreground' : 'font-medium text-muted-foreground'}>
                                                     {mensagem.direcao === 'enviada' ? 'Enviada' : 'Recebida'}
                                                 </span>
                                                 {nome && <span className="truncate text-muted-foreground">para {nome}</span>}
                                             </div>
-                                            <p className="mt-1 break-words text-sm leading-5 text-foreground">{mensagem.texto}</p>
+                                            <p className="mt-1 break-words text-sm leading-5 text-foreground">
+                                                {mensagem.tipo_conteudo && mensagem.tipo_conteudo !== 'texto'
+                                                    ? `Mídia (${mensagem.tipo_conteudo})${mensagem.anexo_nome_original ? ` · ${mensagem.anexo_nome_original}` : ''}`
+                                                    : mensagem.texto}
+                                            </p>
                                         </li>
                                     );
                                 })}

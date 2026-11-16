@@ -3,7 +3,7 @@ export function PageHeader({ eyebrow, title, description, actions }) {
         <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
                 {eyebrow && (
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-terracota-escuro">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-terracota-escuro dark:text-muted-foreground">
                         {eyebrow}
                     </p>
                 )}

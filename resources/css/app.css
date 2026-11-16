@@ -102,48 +102,47 @@
 }
 
 .dark {
-    /* Identidade escura: fundo #1B1922 com superfícies da família lila */
-    --terracota: oklch(0.6911 0.1061 19.71);
-    --terracota-escuro: oklch(0.6001 0.1214 19.29);
-    --areia: oklch(0.8512 0.0275 56.35);
+    /* Superfícies neutras do FlowChat: sem preto absoluto e sem o roxo anterior. */
+    --terracota: #C45D48;
+    --terracota-escuro: #A34B3A;
+    --areia: #E8C99B;
 
-    --background: oklch(0.2198 0.0283 285.3);
-    --foreground: oklch(0.9644 0.0572 274.29);
-    --card: oklch(0.258 0.0407 286);
-    --card-foreground: oklch(0.9644 0.0572 274.29);
-    --popover: oklch(0.258 0.0407 286);
-    --popover-foreground: oklch(0.9644 0.0572 274.29);
+    --background: #141419;
+    --foreground: #E8E6E3;
+    --card: #1B1B22;
+    --card-foreground: #E8E6E3;
+    --popover: #22222B;
+    --popover-foreground: #E8E6E3;
 
-    /* Terracota claro como ação: #DD7E63 sobre o fundo dá 6:1 de contraste */
-    --primary: oklch(0.6911 0.1061 19.71);
-    --primary-foreground: oklch(0.2274 0.0115 357.11);
-    --secondary: oklch(0.2822 0.0358 288.34);
-    --secondary-foreground: oklch(0.9644 0.0572 274.29);
+    --primary: #C45D48;
+    --primary-foreground: #101014;
+    --secondary: #22222B;
+    --secondary-foreground: #E8E6E3;
 
-    --muted: oklch(0.2822 0.0358 288.34);
-    --muted-foreground: oklch(0.7242 0.0632 283.84);
-    --accent: oklch(0.3207 0.0423 288.75);
-    --accent-foreground: oklch(0.9644 0.0572 274.29);
+    --muted: #22222B;
+    --muted-foreground: #A09DA8;
+    --accent: #30303A;
+    --accent-foreground: #E8E6E3;
     --destructive: oklch(0.704 0.191 22.216);
 
-    --border: oklch(0.3207 0.0423 288.75);
-    --input: oklch(0.3207 0.0423 288.75);
-    --ring: oklch(0.6911 0.1061 19.71);
+    --chart-1: var(--terracota-escuro);
+    --chart-2: var(--terracota);
+    --chart-3: var(--areia);
+    --chart-4: var(--foreground);
+    --chart-5: var(--muted-foreground);
 
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
+    --border: #30303A;
+    --input: #30303A;
+    --ring: #C45D48;
 
-    --sidebar: oklch(0.258 0.0407 286);
-    --sidebar-foreground: oklch(0.9644 0.0572 274.29);
-    --sidebar-primary: oklch(0.6911 0.1061 19.71);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.3207 0.0423 288.75);
-    --sidebar-accent-foreground: oklch(0.9644 0.0572 274.29);
-    --sidebar-border: oklch(0.3207 0.0423 288.75);
-    --sidebar-ring: oklch(0.6911 0.1061 19.71);
+    --sidebar: #1B1B22;
+    --sidebar-foreground: #E8E6E3;
+    --sidebar-primary: #C45D48;
+    --sidebar-primary-foreground: #101014;
+    --sidebar-accent: #22222B;
+    --sidebar-accent-foreground: #E8E6E3;
+    --sidebar-border: #30303A;
+    --sidebar-ring: #C45D48;
 }
 
 @layer base {
@@ -154,4 +153,36 @@
     body {
         @apply bg-background text-foreground;
     }
+
+    /* Controles interativos usam o cursor de mão padrão. Elementos
+       desabilitados continuam com o cursor normal. */
+    :where(
+        button,
+        a[href],
+        select,
+        summary,
+        label[for],
+        [role='button'],
+        [role='link'],
+        [role='menuitem'],
+        [role='option'],
+        [role='tab'],
+        [role='switch'],
+        [role='checkbox'],
+        [role='radio'],
+        input[type='checkbox'],
+        input[type='radio'],
+        input[type='submit'],
+        input[type='button'],
+        input[type='reset'],
+        input[type='file'],
+        input[type='range']
+    ):not(:disabled):not([aria-disabled='true']) {
+        cursor: pointer;
+    }
+}
+
+[data-flowchat-dialog]::backdrop {
+    background: rgb(20 20 25 / 52%);
+    backdrop-filter: blur(2px);
 }

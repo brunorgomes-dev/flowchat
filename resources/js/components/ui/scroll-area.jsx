@@ -15,7 +15,11 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        // O wrapper interno do Radix usa `display: table`, que expande a
+        // largura para caber textos longos. Como o scroll horizontal não é
+        // exposto, forçamos um bloco de largura limitada para o truncate
+        // funcionar dentro da lista de conversas e do histórico.
+        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

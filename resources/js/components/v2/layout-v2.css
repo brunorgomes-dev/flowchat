@@ -1,0 +1,286 @@
+/*
+ * FlowChat — Casca real da interface V2 (LayoutV2)
+ *
+ * Estilos específicos do layout promovido, separados de estilo-v2.css para
+ * não afetar o preview de design V2. Abrange:
+ *   - trilho desktop recolhível (>=1024px)
+ *   - drawer vertical de navegação no mobile (<1024px)
+ */
+
+/* ---------- Rail recolhível (desktop) ---------- */
+
+@media (min-width: 1024px) {
+    .v2-shell.v2-layout-rail--compacto {
+        grid-template-columns: 4.25rem minmax(0, 1fr);
+    }
+
+    .v2-rail.v2-layout-rail__trilho--compacto {
+        overflow: visible;
+    }
+
+    .v2-rail.v2-layout-rail__trilho--compacto .v2-rail__marca {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.875rem 0.5rem;
+    }
+
+    .v2-layout-rail__marca--compacto .v2-rail__marca-nome,
+    .v2-layout-rail__marca--compacto .v2-rail__marca-nota {
+        display: none;
+    }
+
+    .v2-layout-rail__alternador {
+        display: inline-flex;
+        width: 2rem;
+        height: 2rem;
+        flex: none;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 0;
+        border-radius: var(--v2-raio);
+        background: transparent;
+        color: var(--v2-rail-ink-2);
+        cursor: pointer;
+    }
+
+    .v2-layout-rail__alternador:hover {
+        background: var(--v2-rail-hover);
+        color: var(--v2-rail-ink);
+    }
+
+    .v2-rail__nav--compacto .v2-rail__grupo {
+        padding: 0.625rem 0.375rem 0;
+    }
+
+    .v2-rail__nav--compacto .v2-rail__titulo {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .v2-rail__nav--compacto .v2-rail__lista {
+        gap: 0.375rem;
+    }
+
+    .v2-rail__link--compacto {
+        justify-content: center;
+        gap: 0;
+        padding: 0.5rem;
+        border-left: 0;
+    }
+
+    .v2-rail__link--compacto[aria-current='page'],
+    .v2-rail__link--compacto.v2-rail__link--ativo-filho {
+        box-shadow: inset 2px 0 0 var(--v2-terracota);
+        background: var(--v2-rail-hover);
+        color: var(--v2-rail-ink);
+    }
+
+    .v2-rail__flyout {
+        position: relative;
+    }
+
+    .v2-rail__flyout-painel {
+        position: absolute;
+        left: calc(100% + 0.5rem);
+        top: -0.375rem;
+        z-index: 60;
+        min-width: 12rem;
+        padding: 0.5rem;
+        border: 1px solid var(--v2-rail-line);
+        background: var(--v2-rail);
+        box-shadow: 0 16px 40px -16px rgb(0 0 0 / 55%);
+    }
+
+    .v2-rail__flyout-painel::before {
+        content: '';
+        position: absolute;
+        left: -0.375rem;
+        top: 1rem;
+        width: 0.75rem;
+        height: 0.75rem;
+        transform: rotate(45deg);
+        border: 1px solid var(--v2-rail-line);
+        border-right: 0;
+        border-top: 0;
+        background: var(--v2-rail);
+    }
+
+    .v2-rail__flyout-titulo {
+        margin: 0 0 0.25rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--v2-rail-ink-2);
+    }
+
+    .v2-rail__flyout-painel--fixo {
+        position: fixed;
+        z-index: 70;
+        max-height: calc(100vh - 4rem);
+        max-width: calc(100vw - 1rem);
+        overflow-y: auto;
+        visibility: hidden;
+    }
+
+    .v2-rail__flyout-painel--pronto {
+        visibility: visible;
+    }
+
+    .v2-rail__flyout-lista {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .v2-layout-rail__rodape--compacto {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem 0.5rem 1rem;
+    }
+
+    .v2-layout-rail__rodape--compacto .v2-layout-rail__status {
+        display: none;
+    }
+
+    .v2-layout-rail__rodape--compacto .v2-layout-rail__legado {
+        display: none;
+    }
+
+    .v2-layout-usuario--compacto {
+        margin-top: 0;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        border-top: 0;
+        padding-top: 0;
+    }
+}
+
+/* ---------- Drawer mobile (<1024px) ---------- */
+
+.v2-layout-topo__hamburger {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--v2-raio);
+    background: transparent;
+    color: var(--v2-ink-2);
+    cursor: pointer;
+}
+
+.v2-layout-topo__hamburger:hover {
+    background: var(--v2-surface-2);
+    color: var(--v2-ink);
+}
+
+.v2-layout-gaveta {
+    position: fixed;
+    inset: 0;
+    z-index: 75;
+    display: flex;
+}
+
+.v2-layout-gaveta__backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgb(20 20 25 / 45%);
+    backdrop-filter: blur(1px);
+    cursor: default;
+}
+
+.v2-layout-gaveta__painel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: min(20rem, calc(100vw - 3rem));
+    height: 100%;
+    flex-direction: column;
+    border-right: 1px solid var(--v2-rail-line);
+    background: var(--v2-rail);
+    color: var(--v2-rail-ink);
+    animation: v2-layout-gaveta-entrar 180ms ease-out;
+}
+
+@keyframes v2-layout-gaveta-entrar {
+    from {
+        transform: translateX(-12px);
+        opacity: 0.6;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.v2-layout-gaveta__cabecalho {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--v2-rail-line);
+}
+
+.v2-layout-gaveta__cabecalho .v2-rail__marca {
+    border-bottom: 0;
+    padding: 0;
+}
+
+.v2-layout-gaveta__corpo {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+
+.v2-layout-gaveta__rodape {
+    flex: none;
+    padding: 0.875rem 1rem 1rem;
+    border-top: 1px solid var(--v2-rail-line);
+    font-size: 0.6875rem;
+    color: var(--v2-rail-ink-2);
+}
+
+.v2-layout-gaveta__rodape a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.v2-layout-gaveta__rodape a:hover {
+    color: var(--v2-rail-ink);
+}
+
+@media (min-width: 1024px) {
+    .v2-layout-topo__hamburger {
+        display: none;
+    }
+
+    .v2-layout-gaveta {
+        display: none;
+    }
+}

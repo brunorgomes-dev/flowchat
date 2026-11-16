@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/PageHeader';
 const fieldClasses = 'h-10 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-sm text-foreground shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 const estilosEstado = {
     pendente: 'border border-areia/70 bg-areia/20 text-foreground',
-    executado: 'border border-primary/20 bg-primary/10 text-terracota-escuro',
+    executado: 'border border-primary/20 bg-primary/10 text-terracota-escuro dark:text-foreground',
     cancelado: 'border border-border bg-muted text-muted-foreground',
     falhou: 'border border-destructive/20 bg-destructive/10 text-destructive',
 };
