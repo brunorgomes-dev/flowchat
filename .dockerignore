@@ -1,4 +1,42 @@
+# Segredos e metadados locais nunca entram no contexto de build
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+.gitattributes
+.github
+.agents
+.claude
+.cursor
+.ai
+.idea
+.vscode
+.npmrc
+.mcp.json
+opencode.json
+boost.json
+CLAUDE.md
+AGENTS.md
+LEMBRETES.md
+MAPA.md
+
+# Dependências e artefatos gerados localmente
 vendor
 node_modules
 public/build
+public/hot
 database/database.sqlite
+.phpunit.result.cache
+phpunit.xml
+tests
+*.log
+relatorio-flowchat.pdf
+bootstrap/cache/*.php
+
+# Conteúdo privado de runtime (o volume Docker fornece os anexos)
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/app/private/*

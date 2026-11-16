@@ -1,0 +1,38 @@
+# Ambiente descartável para ensaio de restauração.
+#
+# Uso (somente leitura deste arquivo pelo operador):
+#   docker compose -p flowchat-restore \
+#     -f docker/backup/docker-compose.restore.yml up -d db
+#
+# - Sem portas publicadas.
+# - Rede interna, sem saída para a internet.
+# - Volumes exclusivos do projeto de restauração.
+# - O script cria o volume `restore_midia` com os labels do projeto; ele não é
+#   montado em nenhum container, para permitir a checagem de volume livre.
+# - O volume `restore_midia` deve estar vazio; o restore recusa mesclar mídia.
+# - Nunca use este arquivo com o projeto Compose ativo nem credenciais reais
+#   de produção. As variáveis abaixo são obrigatórias e devem ser fictícias.
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${RESTORE_DB_DATABASE:?Defina RESTORE_DB_DATABASE}
+      MYSQL_USER: ${RESTORE_DB_USERNAME:?Defina RESTORE_DB_USERNAME}
+      MYSQL_PASSWORD: ${RESTORE_DB_PASSWORD:?Defina RESTORE_DB_PASSWORD}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - restore_mysql:/var/lib/mysql
+    restart: "no"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u \"$$MYSQL_USER\" -p\"$$MYSQL_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+networks:
+  default:
+    internal: true
+
+volumes:
+  restore_mysql:

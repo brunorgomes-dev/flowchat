@@ -30,6 +30,17 @@
 /boost.json
 /AGENTS.md
 /CLAUDE.md
+/.opencode/
+/opencode.json
+/MAPA.md
+
+# Documentos e artefatos internos de trabalho (não são parte do produto)
+/LEMBRETES.md
+/RELATORIOS.md
+/relatorios/
+/relatorio-flowchat.pdf
+/comic/
+/_parecer-extracao.py
 _ide_helper.php
 Homestead.json
 Homestead.yaml

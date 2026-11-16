@@ -1,50 +1,123 @@
+# Ambiente comum dos processos Laravel. Segredos vêm do ambiente/.env em
+# runtime; nada disso é copiado para a imagem durante o build.
+x-app-environment: &app-environment
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_URL: ${APP_URL:?Defina APP_URL no ambiente}
+  APP_KEY: ${APP_KEY:?Defina APP_KEY no ambiente}
+  DB_CONNECTION: mysql
+  DB_HOST: db
+  DB_PORT: 3306
+  DB_DATABASE: ${DB_DATABASE:-flowchat}
+  DB_USERNAME: ${DB_USERNAME:-flowchat}
+  DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no ambiente}
+  QUEUE_CONNECTION: database
+  # Deve ser maior que o --timeout do worker para evitar reprocessamento.
+  DB_QUEUE_RETRY_AFTER: "120"
+  CACHE_STORE: database
+  SESSION_DRIVER: database
+  LOG_CHANNEL: stderr
+  LOG_LEVEL: info
+
 services:
   db:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: flowchat
-      MYSQL_USER: flowchat
-      MYSQL_PASSWORD: secret
-      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: ${DB_DATABASE:-flowchat}
+      MYSQL_USER: ${DB_USERNAME:-flowchat}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no ambiente}
+      # Senha root aleatória; não há credencial fixa no Compose.
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
     ports:
-      - "3307:3306"
+      # Exposição apenas local para inspeção durante o desenvolvimento.
+      - "127.0.0.1:3307:3306"
     volumes:
       - dados_mysql:/var/lib/mysql
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p$$secret"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u \"$$MYSQL_USER\" -p\"$$MYSQL_PASSWORD\" --silent"]
       interval: 5s
       timeout: 3s
       retries: 20
+      start_period: 10s
 
   app:
     build: .
-    environment:
-      DB_CONNECTION: mysql
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_DATABASE: flowchat
-      DB_USERNAME: flowchat
-      DB_PASSWORD: secret
+    env_file:
+      - .env
+    environment: *app-environment
     ports:
-      - "8000:8000"
+      # Acesso local; o Cloudflare Tunnel usa a rede interna em app:80.
+      - "127.0.0.1:8000:80"
+    volumes:
+      - dados_midia:/app/storage/app/private
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck-app"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   fila:
     build: .
-    # Worker da fila + agendador (varredura de agendamentos pendentes a cada minuto)
-    command: sh -c "php artisan queue:work --tries=3 & exec php artisan schedule:work"
-    environment:
-      DB_CONNECTION: mysql
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_DATABASE: flowchat
-      DB_USERNAME: flowchat
-      DB_PASSWORD: secret
+    command: ["php", "artisan", "queue:work", "--tries=3", "--sleep=1", "--timeout=90"]
+    env_file:
+      - .env
+    environment: *app-environment
+    volumes:
+      - dados_midia:/app/storage/app/private
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    stop_grace_period: 100s
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck-fila"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  agendador:
+    build: .
+    command: ["php", "artisan", "schedule:work"]
+    env_file:
+      - .env
+    environment: *app-environment
+    volumes:
+      - dados_midia:/app/storage/app/private
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck-agendador"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # Túnel permanente do Cloudflare (named tunnel): URL fixa
+  # flowchat.inovawebdesigns.com. Requer CLOUDFLARE_TUNNEL_TOKEN no ambiente.
+  # O TLS público é terminado pelo Cloudflare; o tráfego até app:80 fica na
+  # rede privada do Compose.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Defina CLOUDFLARE_TUNNEL_TOKEN no ambiente}
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   dados_mysql:
+  dados_midia:

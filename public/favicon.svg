@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="t">
+  <title id="t">FlowChat</title>
+  <rect width="256" height="256" rx="56" fill="#C45D48"/>
+  <g transform="translate(48.64,45.57) scale(0.62)">
+    <path fill="#FFFFFF" fill-rule="evenodd" d="M244 174.0 V200 A44 44 0 0 1 200 244 H56 A44 44 0 0 1 12 200 V56 A44 44 0 0 1 56 12 H200 A44 44 0 0 1 244 56 V82.0 H196 V66 A6 6 0 0 0 190 60 H66 A6 6 0 0 0 60 66 V190 A6 6 0 0 0 66 196 H190 A6 6 0 0 0 196 190 V174.0 Z"/>
+  </g>
+</svg>
