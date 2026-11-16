@@ -9,7 +9,28 @@ class Mensagem extends Model
 {
     protected $table = 'mensagens';
 
-    protected $fillable = ['contato_id', 'direcao', 'texto'];
+    protected $fillable = [
+        'contato_id',
+        'direcao',
+        'texto',
+        'tipo_conteudo',
+        'anexo_caminho',
+        'anexo_nome_original',
+        'anexo_mime',
+        'anexo_tamanho_bytes',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'anexo_tamanho_bytes' => 'integer',
+        ];
+    }
 
     public function contato(): BelongsTo
     {

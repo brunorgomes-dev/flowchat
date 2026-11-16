@@ -14,6 +14,15 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        $response->assertRedirect('/login');
+    }
+
+    public function test_proxy_https_encaminhado_mantem_a_requisicao_segura(): void
+    {
+        $this->withHeader('X-Forwarded-Proto', 'https')
+            ->get('/login')
+            ->assertOk();
+
+        $this->assertSame('https', app('request')->getScheme());
     }
 }

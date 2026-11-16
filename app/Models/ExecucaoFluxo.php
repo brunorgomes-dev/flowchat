@@ -9,7 +9,12 @@ class ExecucaoFluxo extends Model
 {
     protected $table = 'execucoes_fluxo';
 
-    protected $fillable = ['contato_id', 'fluxo_id', 'etapa_atual', 'concluida_em'];
+    protected $fillable = ['account_id', 'contato_id', 'fluxo_id', 'etapa_atual', 'concluida_em'];
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
 
     public function contato(): BelongsTo
     {

@@ -19,16 +19,17 @@ class ExecutarFluxoController extends Controller
     public function __invoke(Request $request): RedirectResponse
     {
         $dados = $request->validate([
-            'fluxo_id' => ['required', 'integer', 'exists:fluxos,id'],
-            'contato_id' => ['required', 'integer', 'exists:contatos,id'],
+            'fluxo_id' => ['required', 'integer'],
+            'contato_id' => ['required', 'integer'],
         ]);
 
-        $fluxo = Fluxo::findOrFail($dados['fluxo_id']);
+        $conta = $request->user()->account;
+        $fluxo = $conta->fluxos()->findOrFail($dados['fluxo_id']);
 
-        return DB::transaction(function () use ($dados, $fluxo) {
+        return DB::transaction(function () use ($dados, $fluxo, $conta) {
             // Bloqueia a linha do contato para serializar execuções simultâneas
             // do mesmo contato durante a verificação e a criação da execução.
-            $contato = Contato::lockForUpdate()->findOrFail($dados['contato_id']);
+            $contato = $conta->contatos()->lockForUpdate()->findOrFail($dados['contato_id']);
 
             if (! $fluxo->ativo) {
                 return redirect()->back()->withErrors(['fluxo_id' => 'O fluxo deve estar ativo para ser executado.']);
@@ -43,13 +44,14 @@ class ExecutarFluxoController extends Controller
                 return redirect()->back()->withErrors(['contato_id' => 'Já existe uma execução em andamento para este contato.']);
             }
 
-            $execucao = ExecucaoFluxo::create([
+            $execucao = $conta->execucoes()->create([
                 'contato_id' => $contato->id,
                 'fluxo_id' => $fluxo->id,
                 'etapa_atual' => 1,
             ]);
 
             LogSistema::create([
+                'account_id' => $conta->id,
                 'evento' => 'execucao_manual_iniciada',
                 'descricao' => "PSID {$contato->psid} executou manualmente o fluxo {$fluxo->nome}",
             ]);

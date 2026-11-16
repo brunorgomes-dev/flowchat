@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ProcessarMensagemEntrante;
+use App\Models\Account;
 use App\Models\ExecucaoFluxo;
 use App\Models\Fluxo;
 use App\Models\LogSistema;
@@ -12,23 +13,27 @@ use Tests\TestCase;
 
 class ExecucaoFluxoTest extends TestCase
 {
+    private Account $conta;
+
     protected function setUp(): void
     {
         parent::setUp();
-        config(['services.messenger.page_access_token' => 'token_teste']);
+        $this->conta = Account::factory()->create();
+        $this->conta->messengerIntegration()->create(['page_id' => fake()->unique()->numerify('##########'), 'page_access_token' => 'token_teste']);
     }
 
     public function test_fluxo_executa_ponta_a_ponta(): void
     {
         Http::fake();
 
-        $fluxo = Fluxo::create(['nome' => 'Teste', 'ativo' => true]);
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Teste', 'ativo' => true]);
         $fluxo->etapas()->createMany([
             ['ordem' => 1, 'texto' => 'Primeira mensagem', 'pausa_segundos' => 5],
             ['ordem' => 2, 'texto' => 'Segunda mensagem', 'pausa_segundos' => 0],
         ]);
+        $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
-        (new ProcessarMensagemEntrante('12345', 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
 
         // Contato identificado e salvo, mensagem recebida registrada
         $this->assertDatabaseHas('contatos', ['psid' => '12345']);
@@ -36,7 +41,7 @@ class ExecucaoFluxoTest extends TestCase
 
         // Duas mensagens enviadas pela Messenger Platform API
         $this->assertSame(2, Mensagem::where('direcao', 'enviada')->count());
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
 
         // Execução concluída após a última etapa
         $execucao = ExecucaoFluxo::first();
@@ -53,19 +58,20 @@ class ExecucaoFluxoTest extends TestCase
     {
         Http::fake();
 
-        $fluxo = Fluxo::create(['nome' => 'Teste', 'ativo' => true]);
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Teste', 'ativo' => true]);
         $fluxo->etapas()->createMany([
             ['ordem' => 1, 'texto' => 'Primeira mensagem', 'pausa_segundos' => 0],
         ]);
+        $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
         // Primeira execução: fluxo já concluído (uma etapa, queue sync)
-        (new ProcessarMensagemEntrante('12345', 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
 
         // Fluxo com duas etapas para a segunda parte do teste
         $fluxo->etapas()->create(['ordem' => 2, 'texto' => 'Segunda mensagem', 'pausa_segundos' => 0]);
         ExecucaoFluxo::first()->update(['concluida_em' => null, 'etapa_atual' => 1]);
 
-        (new ProcessarMensagemEntrante('12345', 'De novo'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'De novo'))->handle();
 
         // Execução em andamento não gera segunda execução
         $this->assertSame(1, ExecucaoFluxo::where('contato_id', 1)->count());
@@ -77,24 +83,55 @@ class ExecucaoFluxoTest extends TestCase
             'graph.facebook.com/*' => Http::response(['error' => ['message' => 'token invalido']], 400),
         ]);
 
-        $fluxo = Fluxo::create(['nome' => 'Teste', 'ativo' => true]);
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Teste', 'ativo' => true]);
         $fluxo->etapas()->create(['ordem' => 1, 'texto' => 'Primeira mensagem', 'pausa_segundos' => 0]);
+        $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
-        (new ProcessarMensagemEntrante('12345', 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
 
         $this->assertSame(0, Mensagem::where('direcao', 'enviada')->count());
         $this->assertSame(1, LogSistema::where('evento', 'erro_envio')->count());
     }
 
+    public function test_logs_nao_guardam_texto_da_conversa_nem_campos_sensiveis_da_meta(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake([
+            'graph.facebook.com/*' => Http::response([
+                'error' => [
+                    'code' => 190,
+                    'message' => 'Token inválido',
+                    'debug_token' => 'SEGREDO_NAO_LOGAR',
+                ],
+            ], 400),
+        ]);
+
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Teste', 'ativo' => true]);
+        $fluxo->etapas()->create(['ordem' => 1, 'texto' => 'Resposta do fluxo', 'pausa_segundos' => 0]);
+        $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
+
+        $textoRecebido = 'Conteúdo confidencial recebido do contato';
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', $textoRecebido))->handle();
+
+        foreach (LogSistema::all() as $log) {
+            $this->assertStringNotContainsString($textoRecebido, $log->descricao);
+            $this->assertStringNotContainsString('SEGREDO_NAO_LOGAR', $log->descricao);
+        }
+
+        $this->assertDatabaseHas('logs', ['evento' => 'mensagem_recebida']);
+        $this->assertDatabaseHas('logs', ['evento' => 'erro_envio']);
+    }
+
     public function test_token_ausente_nao_envia_e_registra_erro(): void
     {
-        config(['services.messenger.page_access_token' => null]);
+        $this->conta->messengerIntegration()->delete();
         Http::fake();
 
-        $fluxo = Fluxo::create(['nome' => 'Teste', 'ativo' => true]);
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Teste', 'ativo' => true]);
         $fluxo->etapas()->create(['ordem' => 1, 'texto' => 'Primeira mensagem', 'pausa_segundos' => 0]);
+        $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
-        (new ProcessarMensagemEntrante('12345', 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
 
         Http::assertNothingSent();
         $this->assertSame(0, Mensagem::where('direcao', 'enviada')->count());

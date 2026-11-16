@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Account;
 use App\Models\Fluxo;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -18,6 +19,7 @@ class FluxoFactory extends Factory
     public function definition(): array
     {
         return [
+            'account_id' => Account::factory(),
             'nome' => 'Fluxo '.fake()->word(),
             'ativo' => true,
         ];

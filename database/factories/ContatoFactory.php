@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Account;
 use App\Models\Contato;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -18,6 +19,7 @@ class ContatoFactory extends Factory
     public function definition(): array
     {
         return [
+            'account_id' => Account::factory(),
             'psid' => 'psid_'.fake()->unique()->numberBetween(100000, 999999),
             'nome' => fake()->name(),
         ];

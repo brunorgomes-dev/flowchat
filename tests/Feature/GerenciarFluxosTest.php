@@ -3,15 +3,27 @@
 namespace Tests\Feature;
 
 use App\Jobs\ProcessarMensagemEntrante;
+use App\Models\Account;
 use App\Models\Fluxo;
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class GerenciarFluxosTest extends TestCase
 {
+    private Account $conta;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $utilizador = User::factory()->create();
+        $this->conta = $utilizador->account;
+        $this->actingAs($utilizador);
+    }
+
     public function test_pagina_lista_fluxos_com_etapas(): void
     {
-        $fluxo = Fluxo::factory()->create(['nome' => 'Boas-vindas']);
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Boas-vindas', 'ativo' => true]);
         $fluxo->etapas()->createMany([
             ['ordem' => 1, 'texto' => 'Olá', 'pausa_segundos' => 5],
             ['ordem' => 2, 'texto' => 'Tudo bem?', 'pausa_segundos' => 0],
@@ -21,7 +33,7 @@ class GerenciarFluxosTest extends TestCase
 
         $resposta->assertOk()->assertInertia(
             fn ($pagina) => $pagina
-                ->component('Fluxos')
+                ->component('V2/Fluxos')
                 ->where('fluxos.0.nome', 'Boas-vindas')
                 ->where('fluxos.0.etapas.0.texto', 'Olá')
                 ->where('fluxos.0.etapas.1.pausa_segundos', 0)
@@ -38,7 +50,7 @@ class GerenciarFluxosTest extends TestCase
 
     public function test_edita_fluxo_substituindo_etapas(): void
     {
-        $fluxo = Fluxo::factory()->create();
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Teste', 'ativo' => true]);
         $fluxo->etapas()->createMany([
             ['ordem' => 1, 'texto' => 'Antiga', 'pausa_segundos' => 0],
         ]);
@@ -60,7 +72,7 @@ class GerenciarFluxosTest extends TestCase
 
     public function test_desativa_fluxo_pelo_painel(): void
     {
-        $fluxo = Fluxo::factory()->create(['ativo' => true]);
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Teste', 'ativo' => true]);
 
         $this->put("/fluxos/{$fluxo->id}", [
             'nome' => $fluxo->nome,
@@ -75,7 +87,7 @@ class GerenciarFluxosTest extends TestCase
     {
         $this->post('/fluxos', ['nome' => ''])->assertSessionHasErrors('nome');
 
-        $fluxo = Fluxo::factory()->create();
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Teste', 'ativo' => true]);
         $this->put("/fluxos/{$fluxo->id}", [
             'nome' => 'Válido',
             'ativo' => true,
@@ -85,20 +97,33 @@ class GerenciarFluxosTest extends TestCase
 
     public function test_executor_usa_fluxo_ativo_configurado_no_painel(): void
     {
-        config(['services.messenger.page_access_token' => 'token_teste']);
         Http::fake();
 
-        $fluxo = Fluxo::factory()->create(['nome' => 'Configurado no painel', 'ativo' => true]);
+        $this->conta->messengerIntegration()->create(['page_id' => '1234567890', 'page_access_token' => 'token_teste']);
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Configurado no painel', 'ativo' => true]);
         $fluxo->etapas()->createMany([
             ['ordem' => 1, 'texto' => 'Mensagem do painel', 'pausa_segundos' => 0],
         ]);
+        $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
-        (new ProcessarMensagemEntrante('999', 'oi'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '999', 'oi'))->handle();
 
         $this->assertDatabaseHas('mensagens', ['direcao' => 'enviada', 'texto' => 'Mensagem do painel']);
         $this->assertDatabaseHas('logs', [
             'evento' => 'fluxo_iniciado',
             'descricao' => 'PSID 999 iniciou o fluxo Configurado no painel',
         ]);
+    }
+
+    public function test_nao_exibe_ou_edita_fluxo_de_outra_conta(): void
+    {
+        $fluxoAlheio = Fluxo::factory()->create(['nome' => 'Privado']);
+
+        $this->get('/fluxos')->assertOk()->assertInertia(fn ($pagina) => $pagina->missing('fluxos.0.nome'));
+        $this->get("/fluxos/{$fluxoAlheio->id}/editar")->assertNotFound();
+        $this->put("/fluxos/{$fluxoAlheio->id}", [
+            'nome' => 'Alterado', 'ativo' => true, 'etapas' => [],
+        ])->assertNotFound();
+        $this->assertDatabaseHas('fluxos', ['id' => $fluxoAlheio->id, 'nome' => 'Privado']);
     }
 }

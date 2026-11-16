@@ -2,15 +2,27 @@
 
 namespace Tests\Feature;
 
+use App\Models\Account;
 use App\Models\Contato;
+use App\Models\User;
 use Tests\TestCase;
 
 class HistoricoContatoTest extends TestCase
 {
+    private Account $conta;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $utilizador = User::factory()->create();
+        $this->conta = $utilizador->account;
+        $this->actingAs($utilizador);
+    }
+
     public function test_exibe_historico_do_contato_em_ordem_cronologica(): void
     {
-        $contatoA = Contato::factory()->create(['psid' => '111']);
-        $contatoB = Contato::factory()->create(['psid' => '222']);
+        $contatoA = $this->conta->contatos()->create(['psid' => '111']);
+        $contatoB = $this->conta->contatos()->create(['psid' => '222']);
 
         $contatoA->mensagens()->create(['direcao' => 'recebida', 'texto' => 'Primeira do A']);
         $contatoB->mensagens()->create(['direcao' => 'recebida', 'texto' => 'Primeira do B']);
@@ -18,7 +30,7 @@ class HistoricoContatoTest extends TestCase
 
         $this->get("/contatos/{$contatoA->id}/historico")->assertOk()->assertInertia(
             fn ($pagina) => $pagina
-                ->component('HistoricoContato')
+                ->component('V2/HistoricoContato')
                 ->where('contato.psid', '111')
                 ->has('mensagens', 2)
                 ->where('mensagens.0.direcao', 'recebida')
@@ -31,8 +43,8 @@ class HistoricoContatoTest extends TestCase
 
     public function test_historico_exibe_somente_mensagens_do_contato(): void
     {
-        $contatoA = Contato::factory()->create(['psid' => '111']);
-        $contatoB = Contato::factory()->create(['psid' => '222']);
+        $contatoA = $this->conta->contatos()->create(['psid' => '111']);
+        $contatoB = $this->conta->contatos()->create(['psid' => '222']);
 
         $contatoA->mensagens()->create(['direcao' => 'recebida', 'texto' => 'Mensagem do A']);
         $contatoB->mensagens()->createMany([
@@ -50,11 +62,11 @@ class HistoricoContatoTest extends TestCase
 
     public function test_contato_sem_mensagens_exibe_lista_vazia(): void
     {
-        $contato = Contato::factory()->create(['psid' => '333']);
+        $contato = $this->conta->contatos()->create(['psid' => '333']);
 
         $this->get("/contatos/{$contato->id}/historico")->assertOk()->assertInertia(
             fn ($pagina) => $pagina
-                ->component('HistoricoContato')
+                ->component('V2/HistoricoContato')
                 ->has('mensagens', 0)
         );
     }
@@ -62,5 +74,11 @@ class HistoricoContatoTest extends TestCase
     public function test_contato_inexistente_retorna_404(): void
     {
         $this->get('/contatos/999/historico')->assertNotFound();
+    }
+
+    public function test_nao_exibe_historico_de_contato_de_outra_conta(): void
+    {
+        $contato = Contato::factory()->create(['psid' => 'outro']);
+        $this->get("/contatos/{$contato->id}/historico")->assertNotFound();
     }
 }
