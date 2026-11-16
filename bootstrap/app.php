@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\GarantirAdministradorPlataforma;
+use App\Http\Middleware\GarantirContaAtiva;
+use App\Http\Middleware\GarantirPreviewDesignV2;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -13,8 +16,27 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // O Apache recebe tráfego HTTP do Cloudflare Tunnel na rede privada.
+        // Confiar nos cabeçalhos encaminhados mantém URLs e redirects em HTTPS.
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
+
         $middleware->web(append: [
             HandleInertiaRequests::class,
+        ]);
+
+        // Visitantes sem sessão são encaminhados para a página de entrada
+        $middleware->redirectGuestsTo(fn () => route('login'));
+
+        $middleware->alias([
+            'admin.plataforma' => GarantirAdministradorPlataforma::class,
+            'conta.ativa' => GarantirContaAtiva::class,
+            'preview.design-v2' => GarantirPreviewDesignV2::class,
         ]);
 
         // Webhook do Messenger é chamado pelo Facebook sem sessão/CSRF
