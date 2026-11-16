@@ -14,7 +14,9 @@ class Contato extends Model
     /** @use HasFactory<ContatoFactory> */
     use HasFactory;
 
-    protected $fillable = ['account_id', 'psid', 'nome'];
+    protected $fillable = ['account_id', 'psid', 'nome', 'ultima_mensagem_recebida_em'];
+
+    protected $casts = ['ultima_mensagem_recebida_em' => 'datetime'];
 
     public function account(): BelongsTo
     {

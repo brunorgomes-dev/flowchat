@@ -39,6 +39,7 @@ class ProcessarMensagemEntrante implements ShouldQueue
 
         if ($this->texto !== null) {
             $contato->mensagens()->create(['direcao' => 'recebida', 'texto' => $this->texto]);
+            $this->registrarUltimaMensagemRecebida($contato);
             // O texto integral fica apenas na tabela de mensagens; o log
             // funcional registra o evento sem expor a conversa.
             LogSistema::create(['account_id' => $conta->id, 'evento' => 'mensagem_recebida', 'descricao' => "Mensagem recebida do PSID {$this->psid}"]);
@@ -104,6 +105,21 @@ class ProcessarMensagemEntrante implements ShouldQueue
 
             EnviarEtapaFluxo::dispatch($execucao->id);
         }
+    }
+
+    /**
+     * Registra o instante da última mensagem de texto recebida. É a base da
+     * janela de 24 horas da Meta: eventos sem texto (delivery/read) não
+     * contam. Enquanto a migration não estiver aplicada no banco, o job
+     * continua com o comportamento anterior.
+     */
+    private function registrarUltimaMensagemRecebida(Contato $contato): void
+    {
+        if (! Schema::hasColumn('contatos', 'ultima_mensagem_recebida_em')) {
+            return;
+        }
+
+        $contato->update(['ultima_mensagem_recebida_em' => now()]);
     }
 
     /**
