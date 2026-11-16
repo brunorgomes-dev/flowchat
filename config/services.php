@@ -36,7 +36,9 @@ return [
     ],
 
     'messenger' => [
-        'page_access_token' => env('MESSENGER_PAGE_ACCESS_TOKEN'),
+        'app_id' => env('MESSENGER_APP_ID'),
+        'app_secret' => env('MESSENGER_APP_SECRET'),
+        'login_config_id' => env('MESSENGER_LOGIN_CONFIG_ID'),
         'verify_token' => env('MESSENGER_VERIFY_TOKEN'),
         'api_url' => 'https://graph.facebook.com/v23.0',
     ],
