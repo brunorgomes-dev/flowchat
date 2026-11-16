@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Agendamento;
+use App\Models\Contato;
 use App\Models\Fluxo;
+use App\Models\User;
 use App\Support\Design;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -72,6 +75,8 @@ class AgendamentoController extends Controller
             throw ValidationException::withMessages(['fluxo_id' => 'Selecione um fluxo e contato pertencentes à sua conta.']);
         }
 
+        $this->validarJanelaDeMensagemLivre($utilizador, $contato, $executarEm);
+
         $utilizador->account->agendamentos()->create([
             ...$dados,
             // Instância normalizada para o fuso da aplicação: a coluna
@@ -94,6 +99,34 @@ class AgendamentoController extends Controller
             ->update(['estado' => 'cancelado']);
 
         return redirect()->route('agendamentos.index');
+    }
+
+    /**
+     * A Meta só aceita mensagem livre até 24 horas depois da última mensagem
+     * enviada pelo contato. Bloquear na criação evita agendamentos que só
+     * falhariam na Graph API. Sem a coluna (migration pendente), o
+     * comportamento anterior é preservado.
+     */
+    private function validarJanelaDeMensagemLivre(User $utilizador, Contato $contato, CarbonInterface $executarEm): void
+    {
+        if (! Schema::hasColumn('contatos', 'ultima_mensagem_recebida_em')) {
+            return;
+        }
+
+        $ultima = $contato->ultima_mensagem_recebida_em;
+        if ($ultima === null) {
+            throw ValidationException::withMessages([
+                'executar_em' => 'Este contato ainda não enviou mensagem. A Meta só permite mensagem livre até 24 horas após a última mensagem recebida.',
+            ]);
+        }
+
+        $limite = $ultima->copy()->addHours(24);
+        if ($executarEm->greaterThan($limite)) {
+            throw ValidationException::withMessages([
+                'executar_em' => 'A Meta só permite mensagem livre até 24 horas após a última mensagem do contato. Para este contato, o limite é '
+                    .$limite->timezone($utilizador->fusoHorarioEfetivo())->format('d/m/Y H:i').'.',
+            ]);
+        }
     }
 
     /**

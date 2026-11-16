@@ -85,6 +85,10 @@ Todos os PSIDs e anúncios usam o prefixo `DEMO-`. A remoção futura é manual 
 
 O fluxo principal é: webhook `/webhook/messenger` → job `ProcessarMensagemEntrante` → contato/mensagem → execução de fluxo → job `EnviarEtapaFluxo` → Graph API → próxima etapa. Origens de anúncio são persistidas separadamente e não iniciam fluxo por si só.
 
+### Janela de 24 horas da Meta
+
+A Meta só aceita mensagem livre até 24 horas depois da última mensagem enviada pelo contato. O job `ProcessarMensagemEntrante` registra esse instante em `contatos.ultima_mensagem_recebida_em` (somente eventos de texto; delivery/read não contam) e a criação de agendamentos é recusada fora da janela, com o horário-limite exibido no fuso da conta. Contato sem o registro é tratado como fora da janela. A validação fica desativada enquanto a migration da coluna não estiver aplicada no banco. A execução manual de fluxos e os agendamentos criados automaticamente pela regra "aguardar horário" não passam por essa validação e ainda podem falhar na Graph API.
+
 ## Testes, estilo e build
 
 ```bash
