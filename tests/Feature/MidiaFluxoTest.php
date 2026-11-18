@@ -711,6 +711,120 @@ class MidiaFluxoTest extends TestCase
         ]);
     }
 
+    public function test_reordena_etapas_identificadas_preservando_arquivos_de_midia(): void
+    {
+        Storage::fake('local');
+        $utilizador = User::factory()->create();
+        $conta = $utilizador->account;
+        $caminhoImagem = $this->criarArquivoPrivado($conta);
+        $caminhoAudio = $this->criarArquivoPrivado($conta, 'mp3');
+        $caminhoVideo = $this->criarArquivoPrivado($conta, 'mp4');
+        $caminhoArquivo = $this->criarArquivoPrivado($conta, 'pdf');
+        $fluxo = $conta->fluxos()->create(['nome' => 'Fluxo reordenado', 'ativo' => true]);
+        $etapaTexto = $fluxo->etapas()->create([
+            'ordem' => 1,
+            'tipo' => 'mensagem',
+            'tipo_conteudo' => 'texto',
+            'texto' => 'Texto original',
+            'pausa_segundos' => 0,
+        ]);
+        $etapaImagem = $fluxo->etapas()->create([
+            'ordem' => 2,
+            'tipo' => 'mensagem',
+            'tipo_conteudo' => 'imagem',
+            'texto' => '',
+            'pausa_segundos' => 0,
+            'anexo_caminho' => $caminhoImagem,
+            'anexo_nome_original' => 'capa.png',
+            'anexo_mime' => 'image/png',
+            'anexo_tamanho_bytes' => 10,
+        ]);
+        $etapaAudio = $fluxo->etapas()->create([
+            'ordem' => 3,
+            'tipo' => 'mensagem',
+            'tipo_conteudo' => 'audio',
+            'texto' => '',
+            'pausa_segundos' => 0,
+            'anexo_caminho' => $caminhoAudio,
+            'anexo_nome_original' => 'voz.mp3',
+            'anexo_mime' => 'audio/mpeg',
+            'anexo_tamanho_bytes' => 10,
+        ]);
+        $etapaVideo = $fluxo->etapas()->create([
+            'ordem' => 4,
+            'tipo' => 'mensagem',
+            'tipo_conteudo' => 'video',
+            'texto' => '',
+            'pausa_segundos' => 0,
+            'anexo_caminho' => $caminhoVideo,
+            'anexo_nome_original' => 'demo.mp4',
+            'anexo_mime' => 'video/mp4',
+            'anexo_tamanho_bytes' => 10,
+        ]);
+        $etapaArquivo = $fluxo->etapas()->create([
+            'ordem' => 5,
+            'tipo' => 'mensagem',
+            'tipo_conteudo' => 'arquivo',
+            'texto' => '',
+            'pausa_segundos' => 0,
+            'anexo_caminho' => $caminhoArquivo,
+            'anexo_nome_original' => 'manual.pdf',
+            'anexo_mime' => 'application/pdf',
+            'anexo_tamanho_bytes' => 10,
+        ]);
+
+        $this->actingAs($utilizador)
+            ->put("/fluxos/{$fluxo->id}", [
+                'nome' => $fluxo->nome,
+                'ativo' => true,
+                'etapas' => [
+                    $this->dadosEtapa([
+                        'id' => $etapaArquivo->id,
+                        'tipo_conteudo' => 'arquivo',
+                        'texto' => '',
+                    ]),
+                    $this->dadosEtapa([
+                        'id' => $etapaAudio->id,
+                        'tipo_conteudo' => 'audio',
+                        'texto' => '',
+                    ]),
+                    $this->dadosEtapa([
+                        'id' => $etapaTexto->id,
+                        'texto' => 'Texto original',
+                    ]),
+                    $this->dadosEtapa([
+                        'id' => $etapaVideo->id,
+                        'tipo_conteudo' => 'video',
+                        'texto' => '',
+                    ]),
+                    $this->dadosEtapa([
+                        'id' => $etapaImagem->id,
+                        'tipo_conteudo' => 'imagem',
+                        'texto' => '',
+                    ]),
+                ],
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $etapasReordenadas = $fluxo->etapas()->orderBy('ordem')->get();
+
+        $this->assertSame(
+            [(int) $etapaArquivo->id, (int) $etapaAudio->id, (int) $etapaTexto->id, (int) $etapaVideo->id, (int) $etapaImagem->id],
+            $etapasReordenadas->map(fn (EtapaFluxo $etapa): int => (int) $etapa->id)->all(),
+        );
+        $this->assertSame([1, 2, 3, 4, 5], $etapasReordenadas->map(fn (EtapaFluxo $etapa): int => (int) $etapa->ordem)->all());
+        $this->assertSame($caminhoArquivo, $etapasReordenadas[0]->anexo_caminho);
+        $this->assertSame($caminhoAudio, $etapasReordenadas[1]->anexo_caminho);
+        $this->assertNull($etapasReordenadas[2]->anexo_caminho);
+        $this->assertSame($caminhoVideo, $etapasReordenadas[3]->anexo_caminho);
+        $this->assertSame($caminhoImagem, $etapasReordenadas[4]->anexo_caminho);
+        Storage::disk('local')->assertExists($caminhoArquivo);
+        Storage::disk('local')->assertExists($caminhoAudio);
+        Storage::disk('local')->assertExists($caminhoVideo);
+        Storage::disk('local')->assertExists($caminhoImagem);
+    }
+
     public function test_substituir_midia_preserva_arquivo_referenciado_por_mensagem(): void
     {
         Storage::fake('local');

@@ -40,11 +40,11 @@ class GerenciarFluxosTest extends TestCase
         );
     }
 
-    public function test_cria_fluxo_desativado(): void
+    public function test_cria_fluxo_ativo_por_padrao(): void
     {
         $this->post('/fluxos', ['nome' => 'Promocional']);
 
-        $this->assertDatabaseHas('fluxos', ['nome' => 'Promocional', 'ativo' => false]);
+        $this->assertDatabaseHas('fluxos', ['nome' => 'Promocional', 'ativo' => true]);
         $this->assertDatabaseCount('etapas_fluxo', 0);
     }
 
@@ -68,6 +68,166 @@ class GerenciarFluxosTest extends TestCase
         $this->assertDatabaseMissing('etapas_fluxo', ['texto' => 'Antiga']);
         $this->assertDatabaseHas('etapas_fluxo', ['fluxo_id' => $fluxo->id, 'ordem' => 1, 'texto' => 'Primeira', 'pausa_segundos' => 10]);
         $this->assertDatabaseHas('etapas_fluxo', ['fluxo_id' => $fluxo->id, 'ordem' => 2, 'texto' => 'Segunda']);
+    }
+
+    public function test_salva_janela_de_horario_enviada_como_formulario(): void
+    {
+        $this->conta->update(['timezone' => 'America/Sao_Paulo', 'timezone_confirmado' => true]);
+
+        $this->post('/fluxos', [
+            'nome' => 'Fora do horário',
+            'ativo' => '1',
+            'etapas' => [
+                ['texto' => 'Olá', 'pausa_segundos' => 0],
+            ],
+            'horario' => [
+                'ativo' => '1',
+                'inicio' => '08:00',
+                'fim' => '18:00',
+                'fora_horario' => 'aguardar',
+            ],
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertDatabaseHas('fluxos', [
+            'nome' => 'Fora do horário',
+            'ativo' => true,
+            'horario_inicio_ativo' => true,
+            'horario_inicio' => '08:00',
+            'horario_fim' => '18:00',
+            'fora_horario' => 'aguardar',
+        ]);
+    }
+
+    public function test_atualiza_janela_de_horario_recebida_como_formulario(): void
+    {
+        $this->conta->update(['timezone' => 'America/Sao_Paulo', 'timezone_confirmado' => true]);
+
+        $fluxo = $this->conta->fluxos()->create([
+            'nome' => 'Plantão',
+            'ativo' => true,
+            'horario_inicio_ativo' => true,
+            'horario_inicio' => '07:00',
+            'horario_fim' => '13:00',
+            'fora_horario' => 'nao_iniciar',
+        ]);
+
+        $this->put("/fluxos/{$fluxo->id}", [
+            'nome' => 'Plantão',
+            'ativo' => '1',
+            'etapas' => [],
+            'horario' => [
+                'ativo' => '1',
+                'inicio' => '09:00',
+                'fim' => '19:00',
+                'fora_horario' => 'aguardar',
+            ],
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $this->assertDatabaseHas('fluxos', [
+            'id' => $fluxo->id,
+            'horario_inicio_ativo' => true,
+            'horario_inicio' => '09:00',
+            'horario_fim' => '19:00',
+            'fora_horario' => 'aguardar',
+        ]);
+    }
+
+    public function test_reordena_etapas_identificadas_preservando_destinos_de_condicao(): void
+    {
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Fluxo com condição', 'ativo' => true]);
+        $etapaCondicao = $fluxo->etapas()->create([
+            'ordem' => 1,
+            'tipo' => 'condicao_horario',
+            'texto' => '',
+            'pausa_segundos' => 0,
+            'destino_nao_ordem' => 4,
+        ]);
+        $etapaA = $fluxo->etapas()->create([
+            'ordem' => 2,
+            'tipo' => 'mensagem',
+            'texto' => 'Etapa A',
+            'pausa_segundos' => 0,
+        ]);
+        $etapaB = $fluxo->etapas()->create([
+            'ordem' => 3,
+            'tipo' => 'mensagem',
+            'texto' => 'Etapa B',
+            'pausa_segundos' => 0,
+        ]);
+        $etapaD = $fluxo->etapas()->create([
+            'ordem' => 4,
+            'tipo' => 'mensagem',
+            'texto' => 'Etapa D',
+            'pausa_segundos' => 0,
+        ]);
+        $etapaCondicao->condicoes()->create([
+            'ordem' => 1,
+            'inicio' => '08:00',
+            'fim' => '12:00',
+            'destino_ordem' => 3,
+        ]);
+
+        $this->put("/fluxos/{$fluxo->id}", [
+            'nome' => $fluxo->nome,
+            'ativo' => true,
+            'etapas' => [
+                $this->dadosEtapaIdentificada($etapaA->id, ['texto' => 'Etapa A']),
+                $this->dadosEtapaIdentificada($etapaCondicao->id, [
+                    'tipo' => 'condicao_horario',
+                    'texto' => '',
+                    'condicoes' => [[
+                        'inicio' => '08:00',
+                        'fim' => '12:00',
+                        'destino_ordem' => 4,
+                    ]],
+                    'destino_nao_ordem' => 3,
+                ]),
+                $this->dadosEtapaIdentificada($etapaD->id, ['texto' => 'Etapa D']),
+                $this->dadosEtapaIdentificada($etapaB->id, ['texto' => 'Etapa B']),
+            ],
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $etapasReordenadas = $fluxo->etapas()->orderBy('ordem')->get();
+        $etapaCondicaoAtualizada = $fluxo->etapas()->findOrFail($etapaCondicao->id);
+
+        $this->assertSame(
+            [(int) $etapaA->id, (int) $etapaCondicao->id, (int) $etapaD->id, (int) $etapaB->id],
+            $etapasReordenadas->map(fn ($etapa): int => (int) $etapa->id)->all(),
+        );
+        $this->assertSame(2, (int) $etapaCondicaoAtualizada->ordem);
+        $this->assertSame(3, (int) $etapaCondicaoAtualizada->destino_nao_ordem);
+        $this->assertSame(4, (int) $etapaCondicaoAtualizada->condicoes()->firstOrFail()->destino_ordem);
+    }
+
+    public function test_rejeita_id_de_etapa_que_nao_pertence_ao_fluxo_atual(): void
+    {
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Fluxo atual', 'ativo' => true]);
+        $etapaAtual = $fluxo->etapas()->create([
+            'ordem' => 1,
+            'texto' => 'Não alterar',
+            'pausa_segundos' => 0,
+        ]);
+        $outroFluxo = $this->conta->fluxos()->create(['nome' => 'Outro fluxo', 'ativo' => true]);
+        $etapaDeOutroFluxo = $outroFluxo->etapas()->create([
+            'ordem' => 1,
+            'texto' => 'Pertence a outro fluxo',
+            'pausa_segundos' => 0,
+        ]);
+
+        $this->put("/fluxos/{$fluxo->id}", [
+            'nome' => $fluxo->nome,
+            'ativo' => true,
+            'etapas' => [
+                $this->dadosEtapaIdentificada($etapaDeOutroFluxo->id, ['texto' => 'Tentativa inválida']),
+            ],
+        ])->assertSessionHasErrors('etapas.0.id');
+
+        $this->assertDatabaseHas('etapas_fluxo', [
+            'id' => $etapaAtual->id,
+            'fluxo_id' => $fluxo->id,
+            'texto' => 'Não alterar',
+            'ordem' => 1,
+        ]);
     }
 
     public function test_desativa_fluxo_pelo_painel(): void
@@ -125,5 +285,28 @@ class GerenciarFluxosTest extends TestCase
             'nome' => 'Alterado', 'ativo' => true, 'etapas' => [],
         ])->assertNotFound();
         $this->assertDatabaseHas('fluxos', ['id' => $fluxoAlheio->id, 'nome' => 'Privado']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $atributos
+     * @return array<string, mixed>
+     */
+    private function dadosEtapaIdentificada(int $id, array $atributos = []): array
+    {
+        return [
+            'id' => $id,
+            'tipo' => 'mensagem',
+            'tipo_conteudo' => 'texto',
+            'texto' => 'Etapa',
+            'anexo' => null,
+            'remover_anexo' => false,
+            'pausa_segundos' => 0,
+            'indicador_digitacao_ativo' => false,
+            'indicador_digitacao_segundos' => 2,
+            'condicoes' => [],
+            'destino_nao_ordem' => null,
+            'encerra_apos' => false,
+            ...$atributos,
+        ];
     }
 }

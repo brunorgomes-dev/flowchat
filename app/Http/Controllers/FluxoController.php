@@ -68,6 +68,7 @@ class FluxoController extends Controller
             'nome' => ['required', 'string', 'max:255'],
             'ativo' => ['sometimes', 'boolean'],
             'etapas' => ['sometimes', 'array'],
+            'etapas.*.id' => ['prohibited'],
             'etapas.*.tipo' => ['sometimes', 'in:mensagem,condicao_horario'],
             'etapas.*.texto' => ['nullable', 'string'],
             'etapas.*.pausa_segundos' => ['required', 'integer', 'min:0'],
@@ -101,7 +102,7 @@ class FluxoController extends Controller
             $fluxo = DB::transaction(function () use ($dados, $atributosHorario, $etapas, $novosAnexos, $conta): Fluxo {
                 $fluxo = $conta->fluxos()->create([
                     'nome' => $dados['nome'],
-                    'ativo' => $dados['ativo'] ?? false,
+                    'ativo' => $dados['ativo'] ?? true,
                     ...$atributosHorario,
                 ]);
 
@@ -132,6 +133,7 @@ class FluxoController extends Controller
             'nome' => ['required', 'string', 'max:255'],
             'ativo' => ['required', 'boolean'],
             'etapas' => ['present', 'array'],
+            'etapas.*.id' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'etapas.*.tipo' => ['sometimes', 'in:mensagem,condicao_horario'],
             'etapas.*.texto' => ['nullable', 'string'],
             'etapas.*.pausa_segundos' => ['required', 'integer', 'min:0'],
@@ -155,20 +157,32 @@ class FluxoController extends Controller
         ]);
 
         $atributosHorario = $this->atributosHorario($dados, $request->user());
-        $existentes = $fluxo->etapas()->get()->keyBy('ordem');
-        $this->validarEtapas($dados['etapas'], $existentes->all());
+        $etapasExistentes = $fluxo->etapas()->get();
+        $existentesPorOrdem = $etapasExistentes->keyBy('ordem');
+        $existentesPorId = $etapasExistentes->keyBy('id');
+        $usarIdsEtapas = $this->validarIdentificadoresEtapas($dados['etapas'], $existentesPorId->all());
+        $existentesParaValidacao = [];
+
+        foreach ($dados['etapas'] as $indice => $dadosEtapa) {
+            $idEtapa = $dadosEtapa['id'] ?? null;
+            $existentesParaValidacao[$indice + 1] = $usarIdsEtapas
+                ? ($idEtapa !== null ? $existentesPorId->get((int) $idEtapa) : null)
+                : $existentesPorOrdem->get($indice + 1);
+        }
+
+        $this->validarEtapas($dados['etapas'], $existentesParaValidacao);
 
         $novosAnexos = $this->armazenarNovosAnexos($dados['etapas'], $fluxo->account_id, $armazenamento);
 
         try {
-            $caminhosAntigos = DB::transaction(function () use ($fluxo, $dados, $atributosHorario, $novosAnexos): array {
+            $caminhosAntigos = DB::transaction(function () use ($fluxo, $dados, $atributosHorario, $novosAnexos, $usarIdsEtapas): array {
                 $fluxo->update([
                     'nome' => $dados['nome'],
                     'ativo' => $dados['ativo'],
                     ...$atributosHorario,
                 ]);
 
-                $caminhosAntigos = $this->sincronizarEtapas($fluxo, $dados['etapas'], $novosAnexos);
+                $caminhosAntigos = $this->sincronizarEtapas($fluxo, $dados['etapas'], $novosAnexos, $usarIdsEtapas);
 
                 if (array_key_exists('regras', $dados)) {
                     $this->sincronizarRegras($fluxo, $dados['regras']);
@@ -348,6 +362,57 @@ class FluxoController extends Controller
     }
 
     /**
+     * Valida IDs de etapas existentes sem permitir referências a outro fluxo.
+     *
+     * @param  array<int, array<string, mixed>>  $etapas
+     * @param  array<int, EtapaFluxo>  $existentesPorId
+     */
+    private function validarIdentificadoresEtapas(array $etapas, array $existentesPorId): bool
+    {
+        $idsInformados = false;
+
+        foreach ($etapas as $dadosEtapa) {
+            if (array_key_exists('id', $dadosEtapa)) {
+                $idsInformados = true;
+
+                break;
+            }
+        }
+
+        if (! $idsInformados) {
+            return false;
+        }
+
+        $idsUsados = [];
+
+        foreach ($etapas as $indice => $dadosEtapa) {
+            if (! array_key_exists('id', $dadosEtapa)) {
+                throw ValidationException::withMessages([
+                    "etapas.{$indice}.id" => 'Recarregue o fluxo antes de reordenar suas etapas.',
+                ]);
+            }
+
+            $idEtapa = $dadosEtapa['id'];
+
+            if ($idEtapa === null) {
+                continue;
+            }
+
+            $idEtapa = (int) $idEtapa;
+
+            if (! array_key_exists($idEtapa, $existentesPorId) || isset($idsUsados[$idEtapa])) {
+                throw ValidationException::withMessages([
+                    "etapas.{$indice}.id" => 'Uma etapa informada não pertence a este fluxo ou foi repetida. Recarregue e tente novamente.',
+                ]);
+            }
+
+            $idsUsados[$idEtapa] = true;
+        }
+
+        return true;
+    }
+
+    /**
      * Valida uma etapa de mensagem de texto ou de mídia.
      *
      * @param  array<string, mixed>  $etapa
@@ -511,15 +576,24 @@ class FluxoController extends Controller
      * @param  array<int, array{caminho: string, extensao: string, mime: string, nome: string, tamanho: int}>  $novosAnexos
      * @return list<string>
      */
-    private function sincronizarEtapas(Fluxo $fluxo, array $etapas, array $novosAnexos): array
+    private function sincronizarEtapas(Fluxo $fluxo, array $etapas, array $novosAnexos, bool $usarIdsEtapas = false): array
     {
-        $existentes = $fluxo->etapas()->get()->keyBy('ordem');
+        $existentesPorId = $fluxo->etapas()->get()->keyBy('id');
+        $existentesPorOrdem = $existentesPorId->keyBy('ordem');
         $caminhosAntigos = [];
+        $idsMantidos = [];
 
         foreach ($etapas as $indice => $dadosEtapa) {
             $ordem = $indice + 1;
-            $existente = $existentes->get($ordem);
+            $idEtapa = $dadosEtapa['id'] ?? null;
+            $existente = $usarIdsEtapas
+                ? ($idEtapa !== null ? $existentesPorId->get((int) $idEtapa) : null)
+                : $existentesPorOrdem->get($ordem);
             $caminhoAnterior = $existente?->anexo_caminho;
+
+            if ($existente !== null) {
+                $idsMantidos[$existente->id] = true;
+            }
 
             $atributos = [
                 'ordem' => $ordem,
@@ -545,8 +619,8 @@ class FluxoController extends Controller
             $this->sincronizarCondicoes($etapa, $dadosEtapa);
         }
 
-        foreach ($existentes as $ordem => $existente) {
-            if ($ordem <= count($etapas)) {
+        foreach ($existentesPorId as $existente) {
+            if (isset($idsMantidos[$existente->id])) {
                 continue;
             }
 
@@ -675,7 +749,7 @@ class FluxoController extends Controller
     private function atributosHorario(array $dados, ?User $utilizador): array
     {
         if (! $this->colunasHorarioDisponiveis()) {
-            if (($dados['horario']['ativo'] ?? false) === true) {
+            if (filter_var($dados['horario']['ativo'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
                 throw ValidationException::withMessages([
                     'horario' => 'A migration de horário de início ainda não foi executada neste banco de dados.',
                 ]);
@@ -685,7 +759,7 @@ class FluxoController extends Controller
         }
 
         $horario = $dados['horario'] ?? [];
-        $ativo = ($horario['ativo'] ?? false) === true;
+        $ativo = filter_var($horario['ativo'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
         if (! $ativo) {
             // Configuração desativada: limpa a janela e mantém o comportamento atual
