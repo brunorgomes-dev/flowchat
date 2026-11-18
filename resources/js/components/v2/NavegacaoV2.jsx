@@ -184,7 +184,7 @@ function ItemFlyout({ item, caminho, aoNavegar, prefixoId = '' }) {
             <button
                 ref={botaoRef}
                 type="button"
-                className={`v2-rail__link v2-rail__link--compacto ${ativo || temAtivoFilho ? 'v2-rail__link--ativo-filho' : ''}`}
+                className={`v2-rail__link v2-rail__link--compacto w-full ${ativo || temAtivoFilho ? 'v2-rail__link--ativo-filho' : ''}`}
                 aria-expanded={aberto}
                 aria-controls={aberto ? painelId : undefined}
                 aria-label={item.rotulo}
@@ -300,7 +300,7 @@ export function NavegacaoV2({ caminho, grupos, aoNavegar, compacto = false, pref
                                             type="button"
                                             className="v2-rail__link w-full"
                                             aria-expanded={expandido}
-                                            aria-controls={expandido ? submenuId : undefined}
+                                            aria-controls={submenuId}
                                             onClick={() => setAbertos((atuais) => (atuais.includes(item.href)
                                                 ? atuais.filter((href) => href !== item.href)
                                                 : [...atuais, item.href]))}
@@ -308,7 +308,7 @@ export function NavegacaoV2({ caminho, grupos, aoNavegar, compacto = false, pref
                                             {Icone && <Icone className="size-4 shrink-0" aria-hidden="true" strokeWidth={1.7} />}
                                             <span className="truncate">{item.rotulo}</span>
                                             <ChevronDown
-                                                className={`ml-auto size-3.5 shrink-0 transition-transform ${expandido ? 'rotate-180' : ''}`}
+                                                className={`v2-rail__chevron size-3.5 shrink-0 ${expandido ? 'v2-rail__chevron--aberto' : ''}`}
                                                 aria-hidden="true"
                                             />
                                         </button>
@@ -324,19 +324,26 @@ export function NavegacaoV2({ caminho, grupos, aoNavegar, compacto = false, pref
                                         </Link>
                                     )}
 
-                                    {temFilhos && expandido && (
-                                        <div id={submenuId} className="v2-rail__submenu">
-                                            {item.filhos.map((filho) => (
-                                                <Link
-                                                    key={`${filho.href}-${filho.rotulo}`}
-                                                    href={filho.href}
-                                                    onClick={aoNavegar}
-                                                    aria-current={itemAtivo(caminho, filho.href) ? 'page' : undefined}
-                                                    className="v2-rail__link v2-rail__link--filho"
-                                                >
-                                                    <span className="truncate">{filho.rotulo}</span>
-                                                </Link>
-                                            ))}
+                                    {temFilhos && (
+                                        <div
+                                            id={submenuId}
+                                            aria-hidden={!expandido}
+                                            className={`v2-rail__submenu ${expandido ? 'v2-rail__submenu--aberto' : ''}`}
+                                            inert={!expandido}
+                                        >
+                                            <div className="v2-rail__submenu-conteudo">
+                                                {item.filhos.map((filho) => (
+                                                    <Link
+                                                        key={`${filho.href}-${filho.rotulo}`}
+                                                        href={filho.href}
+                                                        onClick={aoNavegar}
+                                                        aria-current={itemAtivo(caminho, filho.href) ? 'page' : undefined}
+                                                        className="v2-rail__link v2-rail__link--filho"
+                                                    >
+                                                        <span className="truncate">{filho.rotulo}</span>
+                                                    </Link>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </li>

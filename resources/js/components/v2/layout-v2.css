@@ -10,6 +10,30 @@
 /* ---------- Rail recolhível (desktop) ---------- */
 
 @media (min-width: 1024px) {
+    .v2-shell {
+        transition: grid-template-columns 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .v2-rail__marca {
+        transition: padding 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .v2-rail__grupo {
+        transition: padding 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .v2-rail__link {
+        transition:
+            background-color 120ms ease-out,
+            color 120ms ease-out,
+            padding 180ms cubic-bezier(0.22, 1, 0.36, 1),
+            gap 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .v2-rail__rodape {
+        transition: padding 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
     .v2-shell.v2-layout-rail--compacto {
         grid-template-columns: 4.25rem minmax(0, 1fr);
     }
@@ -42,11 +66,21 @@
         background: transparent;
         color: var(--v2-rail-ink-2);
         cursor: pointer;
+        margin-left: auto;
+        transition: background-color 120ms ease-out, color 120ms ease-out, transform 120ms ease-out;
+    }
+
+    .v2-rail.v2-layout-rail__trilho--compacto .v2-layout-rail__alternador {
+        margin-left: 0;
     }
 
     .v2-layout-rail__alternador:hover {
         background: var(--v2-rail-hover);
         color: var(--v2-rail-ink);
+    }
+
+    .v2-layout-rail__alternador:active {
+        transform: scale(0.92);
     }
 
     .v2-rail__nav--compacto .v2-rail__grupo {
@@ -186,6 +220,7 @@
     background: transparent;
     color: var(--v2-ink-2);
     cursor: pointer;
+    transition: background-color 120ms ease-out, color 120ms ease-out, transform 120ms ease-out;
 }
 
 .v2-layout-topo__hamburger:hover {
@@ -193,11 +228,51 @@
     color: var(--v2-ink);
 }
 
+.v2-layout-topo__hamburger:active {
+    transform: scale(0.94);
+}
+
+.v2-layout-topo__hamburger-icone {
+    position: relative;
+    display: inline-flex;
+    width: 1.5rem;
+    height: 1.5rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.v2-layout-topo__hamburger-icone svg {
+    transition: opacity 120ms ease-out, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.v2-layout-topo__hamburger-icone svg:last-child {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    opacity: 0;
+    transform: rotate(-45deg) scale(0.85);
+}
+
+.v2-layout-topo__hamburger--aberto .v2-layout-topo__hamburger-icone svg:first-child {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.85);
+}
+
+.v2-layout-topo__hamburger--aberto .v2-layout-topo__hamburger-icone svg:last-child {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+}
+
 .v2-layout-gaveta {
     position: fixed;
     inset: 0;
     z-index: 75;
     display: flex;
+    pointer-events: none;
+}
+
+.v2-layout-gaveta--aberta {
+    pointer-events: auto;
 }
 
 .v2-layout-gaveta__backdrop {
@@ -207,6 +282,12 @@
     background: rgb(20 20 25 / 45%);
     backdrop-filter: blur(1px);
     cursor: default;
+    opacity: 0;
+    transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.v2-layout-gaveta--aberta .v2-layout-gaveta__backdrop {
+    opacity: 1;
 }
 
 .v2-layout-gaveta__painel {
@@ -219,18 +300,14 @@
     border-right: 1px solid var(--v2-rail-line);
     background: var(--v2-rail);
     color: var(--v2-rail-ink);
-    animation: v2-layout-gaveta-entrar 180ms ease-out;
+    opacity: 0;
+    transform: translateX(-1rem);
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease-out;
 }
 
-@keyframes v2-layout-gaveta-entrar {
-    from {
-        transform: translateX(-12px);
-        opacity: 0.6;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+.v2-layout-gaveta--aberta .v2-layout-gaveta__painel {
+    opacity: 1;
+    transform: translateX(0);
 }
 
 .v2-layout-gaveta__cabecalho {

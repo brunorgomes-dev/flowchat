@@ -144,6 +144,8 @@ export default function LayoutV2({ children, semNavegacao = false }) {
 
     const [railCompacto, setRailCompacto] = useState(false);
     const [gavetaAberta, setGavetaAberta] = useState(false);
+    const [gavetaVisivel, setGavetaVisivel] = useState(false);
+    const [gavetaAnimada, setGavetaAnimada] = useState(false);
 
     useBarraDeRolagemVisivel();
 
@@ -157,6 +159,26 @@ export default function LayoutV2({ children, semNavegacao = false }) {
     useEffect(() => {
         setGavetaAberta(false);
     }, [pagina.url]);
+
+    useEffect(() => {
+        if (!gavetaVisivel || !gavetaAberta) {
+            setGavetaAnimada(false);
+            return undefined;
+        }
+
+        const quadros = requestAnimationFrame(() => setGavetaAnimada(true));
+        return () => cancelAnimationFrame(quadros);
+    }, [gavetaAberta, gavetaVisivel]);
+
+    useEffect(() => {
+        if (gavetaAberta || !gavetaVisivel) {
+            return undefined;
+        }
+
+        const reduzirMovimento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const id = setTimeout(() => setGavetaVisivel(false), reduzirMovimento ? 0 : 220);
+        return () => clearTimeout(id);
+    }, [gavetaAberta, gavetaVisivel]);
 
     const existeOutroModalAberto = () => {
         const gaveta = document.getElementById('v2-layout-gaveta');
@@ -184,7 +206,7 @@ export default function LayoutV2({ children, semNavegacao = false }) {
     }, [gavetaAberta]);
 
     useEffect(() => {
-        if (!gavetaAberta) {
+        if (!gavetaVisivel) {
             return undefined;
         }
 
@@ -193,7 +215,7 @@ export default function LayoutV2({ children, semNavegacao = false }) {
         return () => {
             document.body.style.overflow = overflowOriginal;
         };
-    }, [gavetaAberta]);
+    }, [gavetaVisivel]);
 
     useEffect(() => {
         if (shellRef.current) {
@@ -237,7 +259,7 @@ export default function LayoutV2({ children, semNavegacao = false }) {
                 }
 
                 const focaveis = Array.from(painel.querySelectorAll(seletorFocavel))
-                    .filter((elemento) => elemento.offsetParent !== null);
+                    .filter((elemento) => elemento.offsetParent !== null && !elemento.closest('[inert]'));
 
                 if (focaveis.length === 0) {
                     return;
@@ -290,6 +312,15 @@ export default function LayoutV2({ children, semNavegacao = false }) {
 
         return undefined;
     }, [gavetaAberta]);
+
+    const abrirGaveta = () => {
+        setGavetaVisivel(true);
+        setGavetaAberta(true);
+    };
+
+    const fecharGaveta = () => {
+        setGavetaAberta(false);
+    };
 
     const sair = () => {
         router.post('/sair', {}, { onStart: () => router.clearHistory() });
@@ -365,18 +396,26 @@ export default function LayoutV2({ children, semNavegacao = false }) {
                         <div className="v2-topo__trilha">
                             <button
                                 type="button"
-                                className="v2-layout-topo__hamburger"
-                                aria-label="Abrir navegação"
+                                className={`v2-layout-topo__hamburger ${gavetaAberta ? 'v2-layout-topo__hamburger--aberto' : ''}`}
+                                aria-label={gavetaAberta ? 'Fechar navegação' : 'Abrir navegação'}
                                 aria-expanded={gavetaAberta}
-                                aria-controls={gavetaAberta ? 'v2-layout-gaveta' : undefined}
+                                aria-controls={gavetaVisivel ? 'v2-layout-gaveta' : undefined}
                                 onClick={() => {
+                                    if (gavetaAberta) {
+                                        fecharGaveta();
+                                        return;
+                                    }
+
                                     if (!existeOutroModalAberto()) {
-                                        setGavetaAberta(true);
+                                        abrirGaveta();
                                     }
                                 }}
                                 ref={botaoGavetaRef}
                             >
-                                <Menu aria-hidden="true" />
+                                <span className="v2-layout-topo__hamburger-icone" aria-hidden="true">
+                                    <Menu />
+                                    <X />
+                                </span>
                             </button>
                             <span>FlowChat</span>
                             <span aria-hidden="true">/</span>
@@ -393,14 +432,17 @@ export default function LayoutV2({ children, semNavegacao = false }) {
                 </div>
             </div>
 
-            {gavetaAberta && (
-                <div className="v2-layout-gaveta">
+            {gavetaVisivel && (
+                <div
+                    className={`v2-layout-gaveta ${gavetaAnimada ? 'v2-layout-gaveta--aberta' : ''}`}
+                    inert={!gavetaAberta}
+                >
                     <button
                         type="button"
                         className="v2-layout-gaveta__backdrop"
                         aria-label="Fechar navegação"
                         tabIndex={-1}
-                        onClick={() => setGavetaAberta(false)}
+                        onClick={fecharGaveta}
                     />
                     <aside
                         id="v2-layout-gaveta"
@@ -422,7 +464,7 @@ export default function LayoutV2({ children, semNavegacao = false }) {
                                 className="v2-btn v2-btn--fantasma v2-btn--icone shrink-0 text-[var(--v2-rail-ink-2)]"
                                 aria-label="Fechar navegação"
                                 title="Fechar navegação"
-                                onClick={() => setGavetaAberta(false)}
+                                onClick={fecharGaveta}
                                 ref={botaoFecharGavetaRef}
                             >
                                 <X aria-hidden="true" />
@@ -430,7 +472,7 @@ export default function LayoutV2({ children, semNavegacao = false }) {
                         </header>
 
                         <div className="v2-layout-gaveta__corpo">
-                            <NavegacaoV2 caminho={caminho} grupos={grupos} aoNavegar={() => setGavetaAberta(false)} prefixoId="drawer" />
+                            <NavegacaoV2 caminho={caminho} grupos={grupos} aoNavegar={fecharGaveta} prefixoId="drawer" />
                         </div>
 
                         <div className="v2-layout-gaveta__rodape">

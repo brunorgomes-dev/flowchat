@@ -1846,12 +1846,47 @@ textarea.v2-entrada {
 
 /* Submenu do trilho (Configurações → Geral / Conexão) */
 .v2-rail__submenu {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    margin: 0.125rem 0 0.25rem 0.5rem;
+    display: grid;
+    grid-template-rows: 0fr;
+    margin: 0 0 0 0.5rem;
     padding-left: 0.5rem;
     border-left: 1px solid var(--v2-rail-line);
+    opacity: 0;
+    transform: translateY(-2px);
+    transition:
+        grid-template-rows 180ms cubic-bezier(0.22, 1, 0.36, 1),
+        margin-block 180ms cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 140ms ease-out,
+        transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.v2-rail__submenu--aberto {
+    grid-template-rows: 1fr;
+    margin-block: 0.125rem 0.25rem;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.v2-rail__submenu-conteudo {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+}
+
+/* O recorte da animação não deve esconder o anel de foco */
+.v2-rail__submenu .v2-rail__link:focus-visible {
+    outline-offset: -2px;
+}
+
+.v2-rail__chevron {
+    margin-left: auto;
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), color 120ms ease-out;
+}
+
+.v2-rail__chevron--aberto {
+    transform: rotate(180deg);
 }
 
 .v2-rail__link--filho {
