@@ -66,7 +66,7 @@ export function PreviaMensagem({ etapa, indice, total, etapas = [] }) {
                     </span>
                 </div>
                 <div className="v2-editor-fluxo__previa-corpo">
-                    <AnexoMidiaPreview etapa={etapa} />
+                    <AnexoMidiaPreview etapa={etapa} compacto />
                     {etapa?.texto?.trim() && (
                         <p className="v2-campo__erro" style={{ padding: '0.5rem 0.625rem' }}>
                             A Meta aceita texto ou anexo, mas não ambos neste formato. Remova o texto para enviar a mídia.

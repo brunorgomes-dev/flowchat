@@ -9,6 +9,8 @@ import {
     Video,
 } from 'lucide-react';
 
+let sequenciaEtapaLocal = 0;
+
 export const gatilhos = [
     { valor: 'novo_contato', rotulo: 'Novo contato' },
     { valor: 'mensagem_recebida', rotulo: 'Mensagem recebida' },
@@ -106,6 +108,7 @@ export function criarCondicaoVazia() {
 
 export function criarEtapaVazia() {
     return {
+        chaveLocal: `etapa-local-${++sequenciaEtapaLocal}`,
         tipo: 'mensagem',
         texto: '',
         pausa_segundos: 0,
@@ -154,6 +157,7 @@ export function prepararEtapas(fluxo) {
             && Boolean(etapa.anexo_caminho);
 
         return {
+            id: etapa.id,
             tipo,
             texto: etapa.texto ?? '',
             pausa_segundos: tipo === 'condicao_horario' ? 0 : Number(etapa.pausa_segundos ?? 0),
@@ -529,7 +533,7 @@ export function descreverDestino(etapas, ordem) {
     return `Etapa ${destino} · ${resumo.length > 34 ? `${resumo.slice(0, 34)}…` : resumo}`;
 }
 
-export function AnexoMidiaPreview({ etapa }) {
+export function AnexoMidiaPreview({ etapa, compacto = false }) {
     const arquivo = etapa?.arquivo ?? null;
     const anexo = etapa?.anexo ?? null;
     const tipoConteudo = etapa?.tipoConteudo ?? 'texto';
@@ -540,6 +544,16 @@ export function AnexoMidiaPreview({ etapa }) {
     const url = urlObjeto ?? anexo?.url ?? null;
     const Icone = configuracao.icone;
     const tamanhoFormatado = formatarTamanhoBytes(tamanho);
+    const classesAnexo = [
+        'v2-editor-fluxo__anexo',
+        compacto ? 'v2-editor-fluxo__anexo--compacto' : '',
+        compacto && tipoConteudo === 'audio' ? 'v2-editor-fluxo__anexo--compacto-audio' : '',
+    ].filter(Boolean).join(' ');
+    const classesMidia = [
+        'v2-editor-fluxo__anexo-midia',
+        tipoConteudo === 'audio' ? 'v2-editor-fluxo__anexo-midia--audio' : '',
+        compacto && tipoConteudo !== 'audio' ? 'v2-editor-fluxo__anexo-midia--compacta' : '',
+    ].filter(Boolean).join(' ');
 
     useEffect(() => () => {
         if (urlObjeto) {
@@ -548,17 +562,17 @@ export function AnexoMidiaPreview({ etapa }) {
     }, [urlObjeto]);
 
     return (
-        <div className="v2-editor-fluxo__anexo">
+        <div className={classesAnexo}>
             {configuracao.valor === 'imagem' && url && (
-                <img src={url} alt={nome} loading="lazy" className="v2-editor-fluxo__anexo-midia" />
+                <img src={url} alt={nome} loading="lazy" className={classesMidia} />
             )}
 
             {configuracao.valor === 'audio' && url && (
-                <audio controls preload="metadata" src={url} className="v2-editor-fluxo__anexo-midia v2-editor-fluxo__anexo-midia--audio" />
+                <audio controls preload="metadata" src={url} className={classesMidia} />
             )}
 
             {configuracao.valor === 'video' && url && (
-                <video controls preload="metadata" src={url} className="v2-editor-fluxo__anexo-midia" />
+                <video controls preload="metadata" src={url} className={classesMidia} />
             )}
 
             <div className="v2-editor-fluxo__anexo-info">

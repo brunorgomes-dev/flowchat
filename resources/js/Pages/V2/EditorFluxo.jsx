@@ -16,6 +16,7 @@ import {
     criarEtapaVazia,
     estadoInicialDoFluxo,
     estadosIguais,
+    estaAtivo,
     formatarSegundosEmUnidade,
     gatilhos,
     INDICADOR_DIGITACAO_MAXIMO_SEGUNDOS,
@@ -43,10 +44,7 @@ export default function EditorFluxoV2({
 }) {
     const criando = !fluxo?.id;
     const [nome, setNome] = useState(fluxo?.nome ?? '');
-    const [ativo, setAtivo] = useState(() => {
-        const ativoValor = fluxo?.ativo;
-        return ativoValor === true || ativoValor === 1 || ativoValor === '1';
-    });
+    const [ativo, setAtivo] = useState(() => (criando ? true : estaAtivo(fluxo?.ativo)));
     const [etapas, setEtapas] = useState(() => prepararEtapas(fluxo));
     const [gatilhosAtivos, setGatilhosAtivos] = useState(() => prepararGatilhos(fluxo));
     const [horario, setHorario] = useState(() => prepararHorario(fluxo));
@@ -54,8 +52,13 @@ export default function EditorFluxoV2({
     const [etapaSelecionada, setEtapaSelecionada] = useState(0);
     const [estadoGravacao, setEstadoGravacao] = useState(criando ? 'alterado' : 'guardado');
     const [erros, setErros] = useState({});
+    const [mensagemReordenacao, setMensagemReordenacao] = useState('');
     const [etapaParaExcluir, setEtapaParaExcluir] = useState(null);
-    const [dadosBase, setDadosBase] = useState(() => estadoInicialDoFluxo(fluxo));
+    const [dadosBase, setDadosBase] = useState(() => {
+        const estadoPersistido = estadoInicialDoFluxo(fluxo);
+
+        return criando ? { ...estadoPersistido, ativo: true } : estadoPersistido;
+    });
     const [avisoSaidaAberto, setAvisoSaidaAberto] = useState(false);
     const [pausaUnidade, setPausaUnidade] = useState('segundos');
     const [pausaInput, setPausaInput] = useState('');
@@ -85,14 +88,14 @@ export default function EditorFluxoV2({
         const horarioPersistido = prepararHorario(fluxo);
 
         setNome(fluxo.nome ?? '');
-        setAtivo(fluxo?.ativo === true || fluxo?.ativo === 1 || fluxo?.ativo === '1');
+        setAtivo(estaAtivo(fluxo?.ativo));
         setEtapas(etapasPersistidas);
         setGatilhosAtivos(gatilhosPersistidos);
         setHorario(horarioPersistido);
         setPausasAtivas(prepararPausas(etapasPersistidas));
         setDadosBase(capturarEstado({
             nome: fluxo.nome ?? '',
-            ativo: fluxo?.ativo === true || fluxo?.ativo === 1 || fluxo?.ativo === '1',
+            ativo: estaAtivo(fluxo?.ativo),
             etapas: etapasPersistidas,
             gatilhosAtivos: gatilhosPersistidos,
             horario: horarioPersistido,
@@ -226,6 +229,101 @@ export default function EditorFluxoV2({
         return ordem > indiceRemovido + 1 ? ordem - 1 : ordem;
     };
 
+    const moverEtapa = (indice, deslocamento) => {
+        const novoIndice = indice + deslocamento;
+
+        if (novoIndice < 0 || novoIndice >= etapas.length) {
+            return;
+        }
+
+        const indicesNovos = etapas.map((_, indiceOriginal) => {
+            if (indiceOriginal === indice) {
+                return novoIndice;
+            }
+
+            if (indice < novoIndice && indiceOriginal > indice && indiceOriginal <= novoIndice) {
+                return indiceOriginal - 1;
+            }
+
+            if (indice > novoIndice && indiceOriginal >= novoIndice && indiceOriginal < indice) {
+                return indiceOriginal + 1;
+            }
+
+            return indiceOriginal;
+        });
+        let destinoInvalido = false;
+        const etapasComDestinosRemapeados = etapas.map((etapa, indiceOriginal) => {
+            if (etapa.tipo !== 'condicao_horario') {
+                return etapa;
+            }
+
+            const novaOrdemCondicao = indicesNovos[indiceOriginal] + 1;
+            const remapearDestino = (destino) => {
+                const ordemOriginal = normalizarDestino(destino);
+
+                if (ordemOriginal === null || ordemOriginal > etapas.length) {
+                    return destino;
+                }
+
+                const ordemDestino = indicesNovos[ordemOriginal - 1] + 1;
+
+                if (ordemDestino <= novaOrdemCondicao) {
+                    destinoInvalido = true;
+                }
+
+                return ordemDestino;
+            };
+
+            return {
+                ...etapa,
+                condicoes: (etapa.condicoes ?? []).map((condicao) => ({
+                    ...condicao,
+                    destino_ordem: remapearDestino(condicao.destino_ordem),
+                })),
+                destino_nao_ordem: remapearDestino(etapa.destino_nao_ordem),
+            };
+        });
+
+        if (destinoInvalido) {
+            const mensagem = 'Não é possível mover esta etapa: o movimento faria uma condição apontar para uma etapa anterior. Ajuste os destinos e tente novamente.';
+
+            toast.error(mensagem);
+            setMensagemReordenacao(mensagem);
+
+            return;
+        }
+
+        const novasEtapas = [...etapasComDestinosRemapeados];
+        const [etapaMovida] = novasEtapas.splice(indice, 1);
+        novasEtapas.splice(novoIndice, 0, etapaMovida);
+        const novasPausas = [...pausasAtivas];
+        const [pausaMovida] = novasPausas.splice(indice, 1);
+        novasPausas.splice(novoIndice, 0, pausaMovida);
+
+        setEtapas(novasEtapas);
+        setPausasAtivas(novasPausas);
+        setEtapaSelecionada(novoIndice);
+        setErros((errosAtuais) => Object.fromEntries(
+            Object.entries(errosAtuais).map(([campo, mensagemAtual]) => {
+                const correspondencia = campo.match(/^etapas\.(\d+)(.*)$/);
+
+                if (!correspondencia) {
+                    return [campo, mensagemAtual];
+                }
+
+                const indiceOriginal = Number(correspondencia[1]);
+
+                if (indiceOriginal >= indicesNovos.length) {
+                    return [campo, mensagemAtual];
+                }
+
+                return [`etapas.${indicesNovos[indiceOriginal]}${correspondencia[2]}`, mensagemAtual];
+            }),
+        ));
+        setMensagemReordenacao(`Etapa movida para a posição ${novoIndice + 1} de ${etapas.length}.`);
+        marcarAlteracao();
+    };
+
     const confirmarExclusaoEtapa = () => {
         if (etapaParaExcluir === null) {
             return;
@@ -297,6 +395,31 @@ export default function EditorFluxoV2({
                 }
                 : etapa
         )));
+        const prefixoCondicoes = `etapas.${indiceEtapa}.condicoes`;
+        setErros((errosAtuais) => Object.fromEntries(
+            Object.entries(errosAtuais).map(([campo, mensagem]) => {
+                if (campo === prefixoCondicoes) {
+                    return [campo, null];
+                }
+
+                if (!campo.startsWith(`${prefixoCondicoes}.`)) {
+                    return [campo, mensagem];
+                }
+
+                const [, , , indiceErro, ...restoCampo] = campo.split('.');
+                const posicaoErro = Number(indiceErro);
+
+                if (!Number.isInteger(posicaoErro) || posicaoErro < indiceCondicao) {
+                    return [campo, mensagem];
+                }
+
+                if (posicaoErro === indiceCondicao) {
+                    return [campo, null];
+                }
+
+                return [`${prefixoCondicoes}.${posicaoErro - 1}.${restoCampo.join('.')}`, mensagem];
+            }),
+        ));
         marcarAlteracao();
     };
 
@@ -325,6 +448,13 @@ export default function EditorFluxoV2({
 
     const alternarIndicadorDigitacao = (indice, habilitado) => {
         alterarEtapa(indice, 'indicador_digitacao_ativo', habilitado);
+
+        if (!habilitado) {
+            setErros((errosAtuais) => ({
+                ...errosAtuais,
+                [`etapas.${indice}.indicador_digitacao_segundos`]: null,
+            }));
+        }
 
         const segundosAtuais = Number(etapas[indice]?.indicador_digitacao_segundos) || 0;
         if (habilitado && segundosAtuais < 1) {
@@ -380,6 +510,10 @@ export default function EditorFluxoV2({
             return;
         }
 
+        if (etapaAtual.tipo === 'condicao_horario' || (etapaAtual.tipoConteudo ?? 'texto') !== 'texto') {
+            return;
+        }
+
         const textarea = areaTextoRef.current;
         const textoAtual = etapaAtual.texto ?? '';
         const inicio = textarea?.selectionStart ?? textoAtual.length;
@@ -422,6 +556,7 @@ export default function EditorFluxoV2({
             ...errosAtuais,
             [`etapas.${indice}.anexo`]: null,
             [`etapas.${indice}.tipo_conteudo`]: null,
+            [`etapas.${indice}.texto`]: null,
         }));
         marcarAlteracao();
     };
@@ -555,6 +690,7 @@ export default function EditorFluxoV2({
             nome: nomeValido,
             ativo,
             etapas: etapas.map((etapa, indice) => ({
+                ...(!criando ? { id: etapa.id ?? null } : {}),
                 tipo: etapa.tipo,
                 tipo_conteudo: etapa.tipo === 'condicao_horario' ? 'texto' : (etapa.tipoConteudo ?? 'texto'),
                 texto: etapa.tipo === 'condicao_horario'
@@ -678,7 +814,7 @@ export default function EditorFluxoV2({
 
                 <section className="v2-painel v2-editor-fluxo__painel">
                     <div className="v2-editor-fluxo__painel-corpo">
-                        <div className="v2-editor-fluxo__campo-linha">
+                        <div className="v2-editor-fluxo__campo-linha v2-editor-fluxo__campo-linha--nome">
                             <label className="v2-campo" style={{ flex: 1 }}>
                                 <span className="v2-campo__rotulo">Nome do fluxo</span>
                                 <input
@@ -690,7 +826,8 @@ export default function EditorFluxoV2({
                                 />
                                 {erros.nome && <span role="alert" className="v2-campo__erro">{erros.nome}</span>}
                             </label>
-                            <div className="v2-editor-fluxo__campo-linha" style={{ flex: 'none' }}>
+                            <div className="v2-editor-fluxo__campo-ativo">
+                                <span className="v2-campo__rotulo" aria-hidden="true">{'\u00A0'}</span>
                                 <Interruptor
                                     id="fluxo-ativo"
                                     checked={ativo}
@@ -700,9 +837,6 @@ export default function EditorFluxoV2({
                                     }}
                                     titulo="Fluxo ativo"
                                 />
-                                <span className={`v2-chip ${ativo ? 'v2-chip--positivo' : ''}`}>
-                                    {ativo ? 'Ativo' : 'Inativo'}
-                                </span>
                             </div>
                         </div>
                     </div>
@@ -849,6 +983,8 @@ export default function EditorFluxoV2({
                             aoSelecionar={selecionarEtapa}
                             aoAdicionarEtapa={adicionarEtapa}
                             aoAdicionarCondicao={adicionarCondicao}
+                            aoMoverEtapa={moverEtapa}
+                            mensagemReordenacao={mensagemReordenacao}
                         />
                     </div>
 
@@ -859,8 +995,8 @@ export default function EditorFluxoV2({
                                     id="painel-etapa"
                                     ref={painelEdicaoRef}
                                     tabIndex={-1}
-                                    role="tabpanel"
-                                    aria-labelledby={`tab-etapa-${etapaSelecionada}`}
+                                    role="region"
+                                    aria-labelledby={`seletor-etapa-${etapaSelecionada}`}
                                     className="v2-editor-fluxo__painel-corpo"
                                 >
                                     {etapaAtual.tipo === 'condicao_horario' ? (
@@ -874,6 +1010,7 @@ export default function EditorFluxoV2({
                                             aoAdicionarCondicao={adicionarCondicaoNoBloco}
                                             aoRemoverCondicao={removerCondicaoDoBloco}
                                             aoAlterarDestinoNao={(indice, valor) => alterarEtapa(indice, 'destino_nao_ordem', normalizarDestino(valor))}
+                                            aoSolicitarExclusao={setEtapaParaExcluir}
                                         />
                                     ) : (
                                         <EditorEtapa

@@ -1,5 +1,4 @@
-import { Clock3 } from 'lucide-react';
-import { configuracaoTipoConteudo, opcoesForaHorario } from './util';
+import { opcoesForaHorario } from './util';
 
 export function ResumoFluxo({
     nome,
@@ -65,46 +64,6 @@ export function ResumoFluxo({
                         <dd className="v2-numerico">{condicoesConfiguradas}</dd>
                     </div>
                 </dl>
-
-                {etapas.length > 0 && (
-                    <>
-                        <hr className="v2-separador" />
-                        <h3 className="v2-campo__rotulo" style={{ marginBottom: '0.5rem' }}>Etapas</h3>
-                        <ol className="v2-lista">
-                            {etapas.map((etapa, indice) => (
-                                <li key={indice} className="v2-linha">
-                                    <span className="v2-editor-fluxo__etapa-numero" style={{ marginTop: '0.125rem' }}>{indice + 1}</span>
-                                    <div className="min-w-0" style={{ flex: 1 }}>
-                                        {etapa.tipo === 'condicao_horario' ? (
-                                            <p className="v2-linha__nome" style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                                                <Clock3 style={{ width: '0.75rem', height: '0.75rem', color: 'var(--v2-primario)' }} />
-                                                Condição · {(etapa.condicoes ?? []).length} {(etapa.condicoes ?? []).length === 1 ? 'intervalo' : 'intervalos'}
-                                            </p>
-                                        ) : etapa.tipoConteudo && etapa.tipoConteudo !== 'texto' ? (
-                                            <p className="v2-linha__nome">
-                                                Mídia ({configuracaoTipoConteudo(etapa.tipoConteudo).rotulo})
-                                                {etapa.arquivo?.name || etapa.anexo?.nome ? ` · ${etapa.arquivo?.name ?? etapa.anexo.nome}` : ''}
-                                            </p>
-                                        ) : (
-                                            <p className="v2-linha__nome">{etapa.texto || 'Etapa sem texto'}</p>
-                                        )}
-                                        {etapa.tipo !== 'condicao_horario' && etapa.encerra_apos && (
-                                            <p className="v2-micro" style={{ color: 'var(--v2-primario)', marginTop: '0.125rem' }}>
-                                                Encerra o fluxo após esta etapa
-                                            </p>
-                                        )}
-                                        {etapa.tipo !== 'condicao_horario' && !etapa.encerra_apos && indice < etapas.length - 1 && pausasAtivas[indice] && Number(etapa.pausa_segundos) > 0 && (
-                                            <p className="v2-micro" style={{ marginTop: '0.125rem' }}>
-                                                <Clock3 style={{ width: '0.75rem', height: '0.75rem', display: 'inline', verticalAlign: '-0.125rem', marginRight: '0.25rem' }} />
-                                                {etapa.pausa_segundos} s
-                                            </p>
-                                        )}
-                                    </div>
-                                </li>
-                            ))}
-                        </ol>
-                    </>
-                )}
 
                 <hr className="v2-separador" />
                 <div className="v2-dados">

@@ -150,85 +150,104 @@ export function EditorEtapa({
                     )}
                     <p className="v2-campo__ajuda">
                         <Info style={{ width: '0.875rem', height: '0.875rem', verticalAlign: '-0.125rem', marginRight: '0.25rem' }} />
-                        O arquivo é guardado em armazenamento privado e enviado como anexo reutilizável da Página conectada. A Meta aceita um anexo por mensagem.
+                        Esta etapa envia apenas o anexo. O arquivo é guardado em armazenamento privado e enviado como anexo reutilizável da Página conectada; a Meta aceita um anexo por mensagem. Variáveis de texto não se aplicam a etapas de mídia.
                     </p>
                 </div>
             )}
 
-            <div className="v2-campo">
-                <div className="v2-editor-fluxo__secao-cabecalho" style={{ marginBottom: '0.375rem' }}>
-                    <label htmlFor={`conteudo-etapa-${indice}`} className="v2-campo__rotulo">
-                        {tipoAtual.valor === 'texto' ? 'Texto' : 'Texto (não suportado junto com mídia)'}
-                    </label>
-                    <div className="v2-editor-fluxo__grupo-botoes">
-                        <span className="v2-campo__ajuda">Inserir variável</span>
-                        <DropdownMenu.Root>
-                            <DropdownMenu.Trigger asChild>
-                                <button type="button" className="v2-btn v2-btn--contorno v2-btn--pequeno">
-                                    <Braces />
-                                    Variáveis
-                                    <ChevronDown />
-                                </button>
-                            </DropdownMenu.Trigger>
-                            <DropdownMenu.Portal>
-                                <DropdownMenu.Content
-                                    align="end"
-                                    sideOffset={6}
-                                    className="v2-editor-fluxo__dropdown"
-                                >
-                                    <div className="v2-campo__rotulo" style={{ padding: '0.5rem 0.625rem 0.25rem' }}>
-                                        Variáveis disponíveis
-                                    </div>
-                                    {variaveis.map((variavel) => {
-                                        const Icone = variavel.icone;
+            {tipoAtual.valor === 'texto' ? (
+                <div className="v2-campo">
+                    <div className="v2-editor-fluxo__secao-cabecalho" style={{ marginBottom: '0.375rem' }}>
+                        <label htmlFor={`conteudo-etapa-${indice}`} className="v2-campo__rotulo">
+                            Texto
+                        </label>
+                        <div className="v2-editor-fluxo__grupo-botoes">
+                            <span className="v2-campo__ajuda">Inserir variável</span>
+                            <DropdownMenu.Root>
+                                <DropdownMenu.Trigger asChild>
+                                    <button type="button" className="v2-btn v2-btn--contorno v2-btn--pequeno">
+                                        <Braces />
+                                        Variáveis
+                                        <ChevronDown />
+                                    </button>
+                                </DropdownMenu.Trigger>
+                                <DropdownMenu.Portal>
+                                    <DropdownMenu.Content
+                                        align="end"
+                                        sideOffset={6}
+                                        className="v2-editor-fluxo__dropdown"
+                                    >
+                                        <div className="v2-campo__rotulo" style={{ padding: '0.5rem 0.625rem 0.25rem' }}>
+                                            Variáveis disponíveis
+                                        </div>
+                                        {variaveis.map((variavel) => {
+                                            const Icone = variavel.icone;
 
-                                        return (
-                                            <DropdownMenu.Item
-                                                key={variavel.valor}
-                                                onSelect={() => aoInserirVariavel(variavel.valor)}
-                                                className="v2-editor-fluxo__dropdown-item"
-                                            >
-                                                <span className="v2-editor-fluxo__dropdown-icone" aria-hidden="true">
-                                                    <Icone />
-                                                </span>
-                                                <span className="min-w-0" style={{ flex: 1 }}>
-                                                    <span style={{ display: 'block', fontWeight: 500 }}>{variavel.rotulo}</span>
-                                                    <span className="v2-campo__ajuda">{variavel.valor}</span>
-                                                </span>
-                                            </DropdownMenu.Item>
-                                        );
-                                    })}
-                                </DropdownMenu.Content>
-                            </DropdownMenu.Portal>
-                        </DropdownMenu.Root>
+                                            return (
+                                                <DropdownMenu.Item
+                                                    key={variavel.valor}
+                                                    onSelect={() => aoInserirVariavel(variavel.valor)}
+                                                    className="v2-editor-fluxo__dropdown-item"
+                                                >
+                                                    <span className="v2-editor-fluxo__dropdown-icone" aria-hidden="true">
+                                                        <Icone />
+                                                    </span>
+                                                    <span className="min-w-0" style={{ flex: 1 }}>
+                                                        <span style={{ display: 'block', fontWeight: 500 }}>{variavel.rotulo}</span>
+                                                        <span className="v2-campo__ajuda">{variavel.valor}</span>
+                                                    </span>
+                                                </DropdownMenu.Item>
+                                            );
+                                        })}
+                                    </DropdownMenu.Content>
+                                </DropdownMenu.Portal>
+                            </DropdownMenu.Root>
+                        </div>
                     </div>
-                </div>
-                <textarea
-                    id={`conteudo-etapa-${indice}`}
-                    ref={areaTextoRef}
-                    value={etapa.texto}
-                    onChange={(evento) => aoAlterarEtapa(indice, 'texto', evento.target.value)}
-                    aria-invalid={Boolean(erros[`etapas.${indice}.texto`])}
-                    aria-label={`Texto da etapa ${indice + 1}`}
-                    placeholder={tipoAtual.valor === 'texto'
-                        ? 'Escreva a mensagem desta etapa...'
-                        : 'Deixe vazio para enviar apenas a mídia...'}
-                    rows={7}
-                    className="v2-entrada"
-                />
-                {erros[`etapas.${indice}.texto`] && (
-                    <p role="alert" className="v2-campo__erro">{erros[`etapas.${indice}.texto`]}</p>
-                )}
-                {tipoAtual.valor === 'texto' ? (
+                    <textarea
+                        id={`conteudo-etapa-${indice}`}
+                        ref={areaTextoRef}
+                        value={etapa.texto}
+                        onChange={(evento) => aoAlterarEtapa(indice, 'texto', evento.target.value)}
+                        aria-invalid={Boolean(erros[`etapas.${indice}.texto`])}
+                        aria-label={`Texto da etapa ${indice + 1}`}
+                        placeholder="Escreva a mensagem desta etapa..."
+                        rows={7}
+                        className="v2-entrada"
+                    />
+                    {erros[`etapas.${indice}.texto`] && (
+                        <p role="alert" className="v2-campo__erro">{erros[`etapas.${indice}.texto`]}</p>
+                    )}
                     <p className="v2-campo__ajuda">As variáveis {'{{nome}}'} e {'{{psid}}'} são substituídas no envio.</p>
-                ) : temTexto ? (
-                    <p role="alert" className="v2-campo__erro">
-                        A Meta aceita texto ou anexo, mas não ambos neste formato. Remova o texto ou use uma etapa de texto.
-                    </p>
-                ) : (
-                    <p className="v2-campo__ajuda">Esta etapa envia apenas o anexo. Use uma etapa de texto separada se precisar de legenda.</p>
-                )}
-            </div>
+                </div>
+            ) : (
+                <>
+                    {temTexto && (
+                        <div className="v2-editor-fluxo__caixa-info v2-editor-fluxo__caixa-info--erro">
+                            <span className="v2-editor-fluxo__caixa-info-icone" aria-hidden="true">
+                                <Info />
+                            </span>
+                            <div>
+                                <p className="v2-editor-fluxo__secao-nota">
+                                    Esta etapa ainda tem texto guardado. Para enviar apenas a mídia, limpe o texto desta etapa ou volte o tipo para Texto.
+                                </p>
+                                <button
+                                    type="button"
+                                    className="v2-btn v2-btn--contorno v2-btn--pequeno"
+                                    style={{ marginTop: '0.5rem' }}
+                                    onClick={() => aoAlterarEtapa(indice, 'texto', '')}
+                                >
+                                    <Trash2 />
+                                    Limpar texto desta etapa
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    {erros[`etapas.${indice}.texto`] && (
+                        <p role="alert" className="v2-campo__erro">{erros[`etapas.${indice}.texto`]}</p>
+                    )}
+                </>
+            )}
 
             <div className="v2-editor-fluxo__caixa-info">
                 <Interruptor

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { AudioLines, Clock3, FileText, Image as ImageIcon, MessageCircle, Plus, Video } from 'lucide-react';
+import { ArrowDown, ArrowUp, AudioLines, Clock3, FileText, Image as ImageIcon, MessageCircle, Plus, Video } from 'lucide-react';
 import { tiposConteudo } from './util';
 
 const iconePorTipo = {
@@ -32,19 +32,25 @@ export function ListaEtapas({
     aoSelecionar,
     aoAdicionarEtapa,
     aoAdicionarCondicao,
+    aoMoverEtapa,
+    mensagemReordenacao,
 }) {
-    const referenciasTabs = useRef([]);
+    const referenciasEtapas = useRef([]);
     const temErroGeral = Boolean(erros.etapas);
     const errosPorEtapa = new Set();
 
-    for (const chave of Object.keys(erros)) {
+    for (const [chave, mensagem] of Object.entries(erros)) {
+        if (!mensagem) {
+            continue;
+        }
+
         const correspondencia = chave.match(/^etapas\.(\d+)\./);
         if (correspondencia) {
             errosPorEtapa.add(Number(correspondencia[1]));
         }
     }
 
-    const navegarTabs = (evento, indiceAtual) => {
+    const navegarEtapas = (evento, indiceAtual) => {
         let proximoIndice;
 
         if (evento.key === 'ArrowDown') {
@@ -61,7 +67,7 @@ export function ListaEtapas({
 
         evento.preventDefault();
         aoSelecionar(proximoIndice);
-        referenciasTabs.current[proximoIndice]?.focus();
+        referenciasEtapas.current[proximoIndice]?.focus();
     };
 
     return (
@@ -101,40 +107,71 @@ export function ListaEtapas({
                 </p>
             )}
 
-            <div role="tablist" aria-label="Etapas do fluxo" aria-orientation="vertical" className="v2-editor-fluxo__lista-etapas">
+            <ol aria-label="Etapas do fluxo" className="v2-editor-fluxo__lista-etapas">
                 {etapas.map((etapa, indice) => {
                     const selecionada = etapaSelecionada === indice;
                     const temErro = errosPorEtapa.has(indice);
                     const Icone = etapa.tipo === 'condicao_horario' ? Clock3 : (iconePorTipo[etapa.tipoConteudo] ?? MessageCircle);
+                    const resumo = resumoEtapa(etapa);
 
                     return (
-                        <button
-                            key={indice}
-                            type="button"
-                            role="tab"
-                            id={`tab-etapa-${indice}`}
-                            aria-controls="painel-etapa"
-                            aria-selected={selecionada}
-                            tabIndex={selecionada ? 0 : -1}
-                            ref={(elemento) => {
-                                referenciasTabs.current[indice] = elemento;
-                            }}
-                            onKeyDown={(evento) => navegarTabs(evento, indice)}
-                            onClick={() => aoSelecionar(indice)}
-                            className={`v2-editor-fluxo__etapa ${temErro ? 'v2-editor-fluxo__etapa-erro' : ''}`}
+                        <li
+                            key={etapa.id ?? etapa.chaveLocal ?? indice}
+                            className={`v2-editor-fluxo__etapa ${selecionada ? 'v2-editor-fluxo__etapa--selecionada' : ''}`}
                         >
-                            <span className="v2-editor-fluxo__etapa-numero">{indice + 1}</span>
-                            <span className="v2-editor-fluxo__etapa-corpo">
-                                <span className="v2-editor-fluxo__etapa-titulo">
-                                    <Icone style={{ width: '0.75rem', height: '0.75rem', marginRight: '0.25rem', verticalAlign: '-0.125rem' }} />
-                                    {etapa.tipo === 'condicao_horario' ? 'Condição' : `Etapa ${indice + 1}`}
+                            <button
+                                type="button"
+                                id={`seletor-etapa-${indice}`}
+                                aria-controls="painel-etapa"
+                                aria-current={selecionada ? 'step' : undefined}
+                                ref={(elemento) => {
+                                    referenciasEtapas.current[indice] = elemento;
+                                }}
+                                onKeyDown={(evento) => navegarEtapas(evento, indice)}
+                                onClick={() => aoSelecionar(indice)}
+                                className={`v2-editor-fluxo__etapa-seletor ${temErro ? 'v2-editor-fluxo__etapa-erro' : ''}`}
+                            >
+                                <span className="v2-editor-fluxo__etapa-numero">{indice + 1}</span>
+                                <span className="v2-editor-fluxo__etapa-corpo">
+                                    <span className="v2-editor-fluxo__etapa-titulo">
+                                        <Icone style={{ width: '0.75rem', height: '0.75rem', marginRight: '0.25rem', verticalAlign: '-0.125rem' }} />
+                                        {etapa.tipo === 'condicao_horario' ? 'Condição' : `Etapa ${indice + 1}`}
+                                    </span>
+                                    <span className="v2-editor-fluxo__etapa-meta" title={resumo}>{resumo}</span>
                                 </span>
-                                <span className="v2-editor-fluxo__etapa-meta">{resumoEtapa(etapa)}</span>
-                            </span>
-                        </button>
+                            </button>
+                            <div
+                                role="group"
+                                aria-label={`Mover etapa ${indice + 1}`}
+                                aria-hidden={!selecionada}
+                                className={`v2-editor-fluxo__etapa-acoes ${selecionada ? '' : 'v2-editor-fluxo__etapa-acoes--ocultas'}`}
+                            >
+                                <button
+                                    type="button"
+                                    className="v2-editor-fluxo__etapa-mover"
+                                    aria-label={`Mover etapa ${indice + 1} para cima`}
+                                    title="Mover para cima"
+                                    disabled={!selecionada || indice === 0}
+                                    onClick={() => aoMoverEtapa(indice, -1)}
+                                >
+                                    <ArrowUp aria-hidden="true" />
+                                </button>
+                                <button
+                                    type="button"
+                                    className="v2-editor-fluxo__etapa-mover"
+                                    aria-label={`Mover etapa ${indice + 1} para baixo`}
+                                    title="Mover para baixo"
+                                    disabled={!selecionada || indice === etapas.length - 1}
+                                    onClick={() => aoMoverEtapa(indice, 1)}
+                                >
+                                    <ArrowDown aria-hidden="true" />
+                                </button>
+                            </div>
+                        </li>
                     );
                 })}
-            </div>
+            </ol>
+            <span role="status" className="v2-editor-fluxo__sr-only">{mensagemReordenacao}</span>
 
             {etapas.length === 0 && (
                 <div className="v2-vazio">

@@ -11,6 +11,7 @@ export function EditorCondicaoHorario({
     aoAdicionarCondicao,
     aoRemoverCondicao,
     aoAlterarDestinoNao,
+    aoSolicitarExclusao,
 }) {
     const condicoes = etapa.condicoes ?? [];
     const destinosPossiveis = etapas
@@ -32,6 +33,14 @@ export function EditorCondicaoHorario({
                         Ao chegar nesta etapa, o fluxo segue o primeiro intervalo que contém o horário atual. Se nenhum corresponder, segue a saída NÃO.
                     </p>
                 </div>
+                <button
+                    type="button"
+                    className="v2-btn v2-btn--fantasma v2-btn--pequeno v2-editor-fluxo__caixa-info-acao"
+                    onClick={() => aoSolicitarExclusao(indice)}
+                >
+                    <Trash2 />
+                    Remover etapa
+                </button>
             </div>
 
             <p className={`v2-editor-fluxo__caixa-info ${fusoConfirmado ? '' : 'v2-editor-fluxo__caixa-info--erro'}`}>
@@ -48,8 +57,12 @@ export function EditorCondicaoHorario({
                             <button
                                 type="button"
                                 className="v2-btn v2-btn--fantasma v2-btn--icone v2-btn--pequeno"
-                                aria-label={`Remover condição ${posicao + 1}`}
-                                title="Remover condição"
+                                aria-label={condicoes.length <= 1
+                                    ? `Remover condição ${posicao + 1} (indisponível: o bloco precisa de pelo menos uma condição)`
+                                    : `Remover condição ${posicao + 1}`}
+                                title={condicoes.length <= 1
+                                    ? 'O bloco precisa de pelo menos uma condição. Para remover, exclua a etapa inteira.'
+                                    : 'Remover condição'}
                                 onClick={() => aoRemoverCondicao(indice, posicao)}
                                 disabled={condicoes.length <= 1}
                             >
@@ -106,6 +119,12 @@ export function EditorCondicaoHorario({
                         ))}
                     </div>
                 ))}
+
+                {condicoes.length <= 1 && (
+                    <p className="v2-campo__ajuda">
+                        Este bloco precisa de pelo menos uma condição. Para remover o bloco inteiro, use “Remover etapa”.
+                    </p>
+                )}
             </div>
 
             {erroDe('condicoes') && (
