@@ -138,7 +138,12 @@ class IsolamentoContasTest extends TestCase
         $conta->messengerIntegration()->create(['page_id' => 'pagina_agenda', 'page_access_token' => 'token']);
         $fluxo = $conta->fluxos()->create(['nome' => 'Fluxo agendado', 'ativo' => true]);
         $fluxo->etapas()->create(['ordem' => 1, 'texto' => 'Mensagem', 'pausa_segundos' => 0]);
-        $contato = $conta->contatos()->create(['psid' => 'psid-agenda']);
+        // Mensagem recebida recente: sem ela a janela de 24 horas da Meta
+        // impediria a execução e o teste não chegaria à idempotência.
+        $contato = $conta->contatos()->create([
+            'psid' => 'psid-agenda',
+            'ultima_mensagem_recebida_em' => now(),
+        ]);
         $agendamento = $conta->agendamentos()->create([
             'fluxo_id' => $fluxo->id,
             'contato_id' => $contato->id,

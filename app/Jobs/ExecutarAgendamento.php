@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Agendamento;
+use App\Models\Contato;
 use App\Models\ExecucaoFluxo;
 use App\Models\LogSistema;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -53,6 +54,20 @@ class ExecutarAgendamento implements ShouldQueue
             return;
         }
 
+        // Revalida a janela de 24 horas no momento da execução: um agendamento
+        // criado perto do limite pode vencer antes de ser processado.
+        if ($this->janelaDeMensagemLivreExpirada($agendamento)) {
+            $agendamento->update(['estado' => 'falhou']);
+
+            LogSistema::create([
+                'account_id' => $agendamento->account_id,
+                'evento' => 'agendamento_nao_executado_janela_expirada',
+                'descricao' => "Agendamento {$agendamento->id} não iniciou o fluxo {$agendamento->fluxo->nome}: janela de 24 horas da Meta expirada para o PSID {$agendamento->contato->psid}",
+            ]);
+
+            return;
+        }
+
         // Não inicia uma segunda execução concorrente do mesmo fluxo para o
         // contato; o propósito do agendamento já está sendo cumprido por ela
         $emAndamento = ExecucaoFluxo::where('contato_id', $agendamento->contato_id)
@@ -95,5 +110,22 @@ class ExecutarAgendamento implements ShouldQueue
         ]);
 
         EnviarEtapaFluxo::dispatch($execucao->id);
+    }
+
+    /**
+     * Indica se o agendamento venceu a janela de 24 horas da Meta. Quando a
+     * coluna existe e o contato nunca teve mensagem registrada, falha
+     * fechado: sem instante conhecido não há janela válida. Apenas quando a
+     * coluna ainda não existe o comportamento anterior é preservado.
+     */
+    private function janelaDeMensagemLivreExpirada(Agendamento $agendamento): bool
+    {
+        if (! Contato::janelaDeMensagemLivreDisponivel()) {
+            return false;
+        }
+
+        $limite = $agendamento->contato->limiteDaJanelaDeMensagemLivre();
+
+        return $limite === null || now()->greaterThanOrEqualTo($limite);
     }
 }

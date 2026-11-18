@@ -15,17 +15,15 @@ return new class extends Migration
     {
         Schema::table('contatos', function (Blueprint $table) {
             $table->timestamp('ultima_mensagem_recebida_em')->nullable()->after('nome');
-            $table->index('ultima_mensagem_recebida_em');
         });
     }
 
     /**
-     * Reverte a coluna e o índice da janela de 24 horas.
+     * Reverte a coluna da janela de 24 horas.
      */
     public function down(): void
     {
         Schema::table('contatos', function (Blueprint $table) {
-            $table->dropIndex(['ultima_mensagem_recebida_em']);
             $table->dropColumn('ultima_mensagem_recebida_em');
         });
     }

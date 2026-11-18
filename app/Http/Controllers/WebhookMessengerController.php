@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessarMensagemEntrante;
 use App\Jobs\RegistrarOrigemContato;
 use App\Models\MessengerIntegration;
+use App\Support\TimestampEventoMeta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -78,6 +79,14 @@ class WebhookMessengerController extends Controller
                 }
 
                 $mensagem = is_array($evento['message'] ?? null) ? $evento['message'] : null;
+
+                // Eco é uma mensagem enviada pela própria Página, nunca uma
+                // mensagem recebida: descarta antes da origem, da
+                // deduplicação e do despacho.
+                if (($mensagem['is_echo'] ?? false) === true) {
+                    continue;
+                }
+
                 $referral = $this->extrairReferral($evento);
 
                 // Origens de anúncio chegam em eventos próprios (`referral`) ou
@@ -113,6 +122,7 @@ class WebhookMessengerController extends Controller
                     $integracao->account_id,
                     $psid,
                     is_string($mensagem['text'] ?? null) ? $mensagem['text'] : null,
+                    TimestampEventoMeta::normalizar($evento['timestamp'] ?? null),
                 );
 
                 Log::info('Webhook Messenger: mensagem despachada para processamento.', ['page_id' => $pageId]);

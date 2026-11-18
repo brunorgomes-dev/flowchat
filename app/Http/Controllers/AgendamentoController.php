@@ -109,19 +109,20 @@ class AgendamentoController extends Controller
      */
     private function validarJanelaDeMensagemLivre(User $utilizador, Contato $contato, CarbonInterface $executarEm): void
     {
-        if (! Schema::hasColumn('contatos', 'ultima_mensagem_recebida_em')) {
+        if (! Contato::janelaDeMensagemLivreDisponivel()) {
             return;
         }
 
-        $ultima = $contato->ultima_mensagem_recebida_em;
-        if ($ultima === null) {
+        $limite = $contato->limiteDaJanelaDeMensagemLivre();
+        if ($limite === null) {
             throw ValidationException::withMessages([
                 'executar_em' => 'Este contato ainda não enviou mensagem. A Meta só permite mensagem livre até 24 horas após a última mensagem recebida.',
             ]);
         }
 
-        $limite = $ultima->copy()->addHours(24);
-        if ($executarEm->greaterThan($limite)) {
+        // Limite exclusivo: no instante exato de 24 horas a Meta já não
+        // permite mensagem livre.
+        if ($executarEm->greaterThanOrEqualTo($limite)) {
             throw ValidationException::withMessages([
                 'executar_em' => 'A Meta só permite mensagem livre até 24 horas após a última mensagem do contato. Para este contato, o limite é '
                     .$limite->timezone($utilizador->fusoHorarioEfetivo())->format('d/m/Y H:i').'.',

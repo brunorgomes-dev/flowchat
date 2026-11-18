@@ -7,6 +7,8 @@ use App\Models\Contato;
 use App\Models\ExecucaoFluxo;
 use App\Models\Fluxo;
 use App\Models\LogSistema;
+use App\Support\TimestampEventoMeta;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -19,8 +21,19 @@ class ProcessarMensagemEntrante implements ShouldQueue
 
     /**
      * Create a new job instance.
+     *
+     * O timestamp do evento chega em milissegundos, como enviado pela Meta.
+     * Quando ele está ausente ou fora da faixa válida, a janela de 24 horas
+     * não é renovada (o contato fica sem janela conhecida); eventos sem
+     * objeto de mensagem (read/delivery) usam mensagemRecebida = false.
      */
-    public function __construct(public int $accountId, public string $psid, public ?string $texto) {}
+    public function __construct(
+        public int $accountId,
+        public string $psid,
+        public ?string $texto,
+        public ?int $timestampEventoMs = null,
+        public bool $mensagemRecebida = true,
+    ) {}
 
     /**
      * Execute the job.
@@ -33,13 +46,21 @@ class ProcessarMensagemEntrante implements ShouldQueue
             return;
         }
 
+        // Eventos sem objeto de mensagem (read/delivery) não são eventos de
+        // mensagem: não criam contato, não renovam a janela e não disparam
+        // gatilhos de mensagem_recebida ou novo_contato.
+        if (! $this->mensagemRecebida) {
+            return;
+        }
+
         $contato = $conta->contatos()->firstOrCreate(['psid' => $this->psid]);
 
         $this->preencherNome($contato, $conta->messengerIntegration?->page_access_token);
 
+        $this->registrarUltimaMensagemRecebida($contato);
+
         if ($this->texto !== null) {
             $contato->mensagens()->create(['direcao' => 'recebida', 'texto' => $this->texto]);
-            $this->registrarUltimaMensagemRecebida($contato);
             // O texto integral fica apenas na tabela de mensagens; o log
             // funcional registra o evento sem expor a conversa.
             LogSistema::create(['account_id' => $conta->id, 'evento' => 'mensagem_recebida', 'descricao' => "Mensagem recebida do PSID {$this->psid}"]);
@@ -108,18 +129,51 @@ class ProcessarMensagemEntrante implements ShouldQueue
     }
 
     /**
-     * Registra o instante da última mensagem de texto recebida. É a base da
-     * janela de 24 horas da Meta: eventos sem texto (delivery/read) não
-     * contam. Enquanto a migration não estiver aplicada no banco, o job
-     * continua com o comportamento anterior.
+     * Registra o instante da última mensagem recebida, base da janela de
+     * 24 horas da Meta. Usa o timestamp do evento (e não o momento do
+     * processamento) e nunca retrocede a janela quando um evento chega
+     * fora de ordem. Sem timestamp de evento válido, a janela não é
+     * renovada: não se abre uma janela artificial no processamento.
+     * Enquanto a migration não estiver aplicada no banco, o job continua
+     * com o comportamento anterior.
      */
     private function registrarUltimaMensagemRecebida(Contato $contato): void
     {
-        if (! Schema::hasColumn('contatos', 'ultima_mensagem_recebida_em')) {
+        if (! Contato::janelaDeMensagemLivreDisponivel()) {
             return;
         }
 
-        $contato->update(['ultima_mensagem_recebida_em' => now()]);
+        $instante = $this->instanteDoEvento();
+        if ($instante === null) {
+            return;
+        }
+
+        // Atualização condicional e monotônica: um evento atrasado não pode
+        // encurtar a janela já registrada por outro mais recente.
+        $atualizado = $contato->newQuery()
+            ->whereKey($contato->id)
+            ->where(fn ($consulta) => $consulta
+                ->whereNull('ultima_mensagem_recebida_em')
+                ->orWhere('ultima_mensagem_recebida_em', '<', $instante))
+            ->update(['ultima_mensagem_recebida_em' => $instante]);
+
+        if ($atualizado > 0) {
+            $contato->refresh();
+        }
+    }
+
+    /**
+     * Instante do evento da Meta, convertido do timestamp em milissegundos.
+     * Devolve null quando o payload não traz um timestamp normalizado
+     * válido, para que a janela permaneça sem renovação.
+     */
+    private function instanteDoEvento(): ?CarbonInterface
+    {
+        $timestampMs = TimestampEventoMeta::normalizar($this->timestampEventoMs);
+
+        return $timestampMs !== null
+            ? Carbon::createFromTimestampMs($timestampMs)->timezone(config('app.timezone'))
+            : null;
     }
 
     /**
@@ -153,6 +207,22 @@ class ProcessarMensagemEntrante implements ShouldQueue
         $executarEm = $fluxo->proximoInicioPermitido($agoraLocal)?->timezone(config('app.timezone'));
         if ($executarEm === null) {
             return;
+        }
+
+        // A espera automática só pode ser agendada dentro da janela de
+        // mensagem livre; sem instante conhecido ou além do limite (24 h,
+        // exclusivo), o agendamento não é criado.
+        if (Contato::janelaDeMensagemLivreDisponivel()) {
+            $limite = $contato->limiteDaJanelaDeMensagemLivre();
+            if ($limite === null || $executarEm->greaterThanOrEqualTo($limite)) {
+                LogSistema::create([
+                    'account_id' => $conta->id,
+                    'evento' => 'fluxo_aguardando_sem_janela',
+                    'descricao' => "PSID {$this->psid}: fluxo {$fluxo->nome} não foi agendado porque a janela de 24 horas da Meta terminaria antes do início permitido",
+                ]);
+
+                return;
+            }
         }
 
         $conta->agendamentos()->create([

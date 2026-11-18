@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\ContatoFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 
 class Contato extends Model
 {
@@ -17,6 +19,26 @@ class Contato extends Model
     protected $fillable = ['account_id', 'psid', 'nome', 'ultima_mensagem_recebida_em'];
 
     protected $casts = ['ultima_mensagem_recebida_em' => 'datetime'];
+
+    /**
+     * Indica se a coluna que guarda o instante da última mensagem recebida
+     * já existe. Enquanto a migration estiver pendente, os fluxos mantêm o
+     * comportamento anterior à janela de 24 horas.
+     */
+    public static function janelaDeMensagemLivreDisponivel(): bool
+    {
+        return Schema::hasColumn('contatos', 'ultima_mensagem_recebida_em');
+    }
+
+    /**
+     * Instante em que a janela de 24 horas termina. É um limite exclusivo:
+     * a Meta não permite mensagem livre nele nem depois dele. Devolve null
+     * quando o contato ainda não enviou mensagem.
+     */
+    public function limiteDaJanelaDeMensagemLivre(): ?CarbonInterface
+    {
+        return $this->ultima_mensagem_recebida_em?->copy()->addHours(24);
+    }
 
     public function account(): BelongsTo
     {
