@@ -6,9 +6,11 @@
         "build": "vite build",
         "dev": "vite",
         "lint": "eslint resources/js",
-        "lint:fix": "eslint resources/js --fix"
+        "lint:fix": "eslint resources/js --fix",
+        "e2e": "playwright test"
     },
     "devDependencies": {
+        "@playwright/test": "^1.65.1",
         "@tailwindcss/vite": "^4.0.0",
         "@vitejs/plugin-react": "^6.1.2",
         "concurrently": "^10.0.7",
