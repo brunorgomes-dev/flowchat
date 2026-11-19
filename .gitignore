@@ -25,6 +25,7 @@
 /database/e2e.sqlite
 /test-results/
 /playwright-report/
+/tests/Browser/.auth/
 
 # Ferramentas locais de agente/assistente
 /.agents

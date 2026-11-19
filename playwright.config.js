@@ -33,6 +33,20 @@ export default defineConfig({
     timeout: 30_000,
     expect: { timeout: 5_000 },
     reporter: [['list']],
+    projects: [
+        {
+            name: 'autenticacao',
+            testMatch: /auth\.setup\.js/,
+        },
+        {
+            name: 'chromium',
+            testMatch: /smoke\.spec\.js/,
+            dependencies: ['autenticacao'],
+            use: {
+                storageState: 'tests/Browser/.auth/estado.json',
+            },
+        },
+    ],
     use: {
         baseURL: BASE,
         trace: 'retain-on-failure',
