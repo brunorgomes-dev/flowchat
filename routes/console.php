@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Recupera agendamentos pendentes vencidos (fila sobrevive a interrupções)
 Schedule::command('agendamentos:processar')->everyMinute();
+
+// Libera contatos presos por uma execução interrompida (worker morto, deploy)
+Schedule::command('fluxos:encerrar-presas')->hourly();
