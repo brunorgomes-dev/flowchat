@@ -22,6 +22,18 @@ class EnviarEtapaFluxo implements ShouldQueue
     use Queueable;
 
     /**
+     * O envio ao Messenger não é idempotente: repetir o job pode entregar a
+     * mesma mensagem duas vezes ao contato. Uma tentativa apenas.
+     */
+    public int $tries = 1;
+
+    /**
+     * Fica abaixo do `--timeout=90` do worker e do `retry_after=120` da fila
+     * para o job nunca ser morto no meio de um envio (ver docker-compose.yml).
+     */
+    public int $timeout = 80;
+
+    /**
      * Create a new job instance.
      *
      * O segundo parâmetro evita reenviar o indicador quando o mesmo job é
@@ -348,7 +360,7 @@ class EnviarEtapaFluxo implements ShouldQueue
 
             $resposta = Http::withToken($token)
                 ->connectTimeout(5)
-                ->timeout(120)
+                ->timeout(45)
                 ->attach(
                     'filedata',
                     $stream,
@@ -397,7 +409,7 @@ class EnviarEtapaFluxo implements ShouldQueue
     {
         return Http::withToken($token)
             ->connectTimeout(5)
-            ->timeout(30)
+            ->timeout(15)
             ->post(config('services.messenger.api_url').'/me/messages', [
                 'recipient' => ['id' => $psid],
                 'message' => [
@@ -558,6 +570,8 @@ class EnviarEtapaFluxo implements ShouldQueue
         }
 
         $resposta = Http::withToken($token)
+            ->connectTimeout(5)
+            ->timeout(15)
             ->post(config('services.messenger.api_url').'/me/messages', [
                 'recipient' => ['id' => $psid],
                 'sender_action' => $acao,
@@ -588,6 +602,8 @@ class EnviarEtapaFluxo implements ShouldQueue
         }
 
         $resposta = Http::withToken($token)
+            ->connectTimeout(5)
+            ->timeout(15)
             ->post(config('services.messenger.api_url').'/me/messages', [
                 'recipient' => ['id' => $psid],
                 'message' => ['text' => $texto],

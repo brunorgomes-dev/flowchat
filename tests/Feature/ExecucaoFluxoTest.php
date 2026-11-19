@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\EnviarEtapaFluxo;
 use App\Jobs\ProcessarMensagemEntrante;
 use App\Models\Account;
 use App\Models\ExecucaoFluxo;
@@ -75,6 +76,34 @@ class ExecucaoFluxoTest extends TestCase
 
         // Execução em andamento não gera segunda execução
         $this->assertSame(1, ExecucaoFluxo::where('contato_id', 1)->count());
+    }
+
+    public function test_envio_usa_uma_tentativa_e_termina_antes_do_timeout_do_worker(): void
+    {
+        $job = new EnviarEtapaFluxo(1);
+
+        $this->assertSame(1, $job->tries);
+        $this->assertSame(80, $job->timeout);
+        $this->assertLessThan(90, $job->timeout);
+    }
+
+    public function test_job_nao_reenvia_execucao_ja_concluida(): void
+    {
+        Http::fake();
+
+        $contato = $this->conta->contatos()->create(['psid' => '12345']);
+        $fluxo = $this->conta->fluxos()->create(['nome' => 'Teste', 'ativo' => true]);
+        $execucao = $this->conta->execucoes()->create([
+            'contato_id' => $contato->id,
+            'fluxo_id' => $fluxo->id,
+            'etapa_atual' => 1,
+            'concluida_em' => now(),
+        ]);
+
+        (new EnviarEtapaFluxo($execucao->id))->handle();
+
+        Http::assertNothingSent();
+        $this->assertSame(0, Mensagem::count());
     }
 
     public function test_api_rejeita_envio_registra_erro(): void
