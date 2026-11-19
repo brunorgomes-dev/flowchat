@@ -2,7 +2,6 @@
 
 use App\Http\Middleware\GarantirAdministradorPlataforma;
 use App\Http\Middleware\GarantirContaAtiva;
-use App\Http\Middleware\GarantirPreviewDesignV2;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -36,7 +35,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.plataforma' => GarantirAdministradorPlataforma::class,
             'conta.ativa' => GarantirContaAtiva::class,
-            'preview.design-v2' => GarantirPreviewDesignV2::class,
         ]);
 
         // Webhook do Messenger é chamado pelo Facebook sem sessão/CSRF

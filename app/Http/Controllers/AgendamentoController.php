@@ -6,7 +6,6 @@ use App\Models\Agendamento;
 use App\Models\Contato;
 use App\Models\Fluxo;
 use App\Models\User;
-use App\Support\Design;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +24,7 @@ class AgendamentoController extends Controller
     {
         $conta = $request->user()->account;
 
-        return Inertia::render(Design::componente('V2/Agendamentos', 'Agendamentos'), [
+        return Inertia::render('V2/Agendamentos', [
             'fluxos' => $conta->fluxos()->orderBy('id')->get(['id', 'nome']),
             'contatos' => $conta->contatos()->orderBy('id')->get(['id', 'psid', 'nome']),
             'agendamentos' => $conta->agendamentos()->with('fluxo:id,nome', 'contato:id,psid,nome')->orderBy('id')->get(),

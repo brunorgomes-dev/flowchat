@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\LogSistema;
 use App\Models\Mensagem;
-use App\Support\Design;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,7 +17,7 @@ class PaginaInicialController extends Controller
     {
         $conta = $request->user()->account;
 
-        return Inertia::render(Design::componente('V2/Painel', 'PaginaInicial'), [
+        return Inertia::render('V2/Painel', [
             'contatos' => $conta->contatos()->withCount('mensagens')->latest('id')->get(),
             'fluxos' => $conta->fluxos()->where('ativo', true)->orderBy('id')->get(['id', 'nome']),
             'mensagens' => Mensagem::whereHas('contato', fn ($consulta) => $consulta->where('account_id', $conta->id))->with('contato:id,psid,nome')->latest('id')->limit(50)->get(),

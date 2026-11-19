@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Support\Design;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -24,7 +23,7 @@ class LoginController extends Controller
      */
     public function criar(): Response
     {
-        return Inertia::render(Design::componente('V2/Login', 'Login'));
+        return Inertia::render('V2/Login');
     }
 
     /**
@@ -130,7 +129,7 @@ class LoginController extends Controller
                 'ultimo_acesso' => now()->setTimestamp($sessao->last_activity)->diffForHumans(),
             ])->values();
 
-        return Inertia::render(Design::componente('V2/SessoesLogin', 'SessoesLogin'), ['sessoes' => $sessoes]);
+        return Inertia::render('V2/SessoesLogin', ['sessoes' => $sessoes]);
     }
 
     /**

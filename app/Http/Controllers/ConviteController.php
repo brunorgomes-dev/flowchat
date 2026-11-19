@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\Convite;
 use App\Models\User;
-use App\Support\Design;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -58,7 +57,7 @@ class ConviteController extends Controller
                 ])
                 ->values();
 
-        return Inertia::render(Design::componente('V2/AdminContas', 'AdminConvites'), [
+        return Inertia::render('V2/AdminContas', [
             'contas' => $contas,
             'administradores' => $administradores,
         ]);
@@ -92,7 +91,7 @@ class ConviteController extends Controller
                     ],
             ]);
 
-        return Inertia::render(Design::componente('V2/AdminConvites', 'AdminEmitirConvites'), [
+        return Inertia::render('V2/AdminConvites', [
             'convites' => $convites,
             'linkConvite' => $request->session()->get('link_convite'),
         ]);
@@ -142,7 +141,7 @@ class ConviteController extends Controller
     {
         $convite = $this->conviteValido($token);
 
-        return Inertia::render(Design::componente('V2/Cadastro', 'Cadastro'), [
+        return Inertia::render('V2/Cadastro', [
             'convite' => ['email' => $convite->email],
             'urlCadastro' => route('convites.registrar', ['token' => $token]),
         ]);

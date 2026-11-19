@@ -15,7 +15,6 @@ use App\Http\Controllers\FluxoController;
 use App\Http\Controllers\HistoricoContatoController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PaginaInicialController;
-use App\Http\Controllers\PreviewDesignV2Controller;
 use App\Http\Controllers\ResponderContatoController;
 use App\Http\Controllers\WebhookMessengerController;
 use Illuminate\Support\Facades\Route;
@@ -99,79 +98,6 @@ Route::middleware(['auth', 'conta.ativa', 'admin.plataforma'])
     ->group(function (): void {
         Route::post('/{account}/suspender', [AdminContaController::class, 'suspender'])->name('suspender');
         Route::post('/{account}/reativar', [AdminContaController::class, 'reativar'])->name('reativar');
-    });
-
-/*
- * Preview de design V2 — área isolada e somente leitura.
- *
- * Não substitui nenhuma rota de produto: só é montada quando
- * FLOWCHAT_PREVIEW_DESIGN_V2=true (ou APP_ENV=local, sem a variável).
- * As telas usam fixtures fictícias e nenhum formulário grava dados.
- */
-Route::middleware(['auth', 'conta.ativa', 'preview.design-v2'])
-    ->prefix('preview/design-v2')
-    ->name('preview.design-v2.')
-    ->group(function (): void {
-        Route::get('/', [PreviewDesignV2Controller::class, 'mapa'])->name('mapa');
-        Route::get('/painel', [PreviewDesignV2Controller::class, 'painel'])->name('painel');
-        Route::get('/conversas', [PreviewDesignV2Controller::class, 'conversas'])->name('conversas');
-        Route::get('/conversas/historico', [PreviewDesignV2Controller::class, 'historicoContato'])->name('conversas.historico');
-        Route::get('/fluxos', [PreviewDesignV2Controller::class, 'fluxos'])->name('fluxos');
-        Route::get('/fluxos/editor', [PreviewDesignV2Controller::class, 'editorFluxo'])->name('fluxos.editor');
-        Route::get('/agendamentos', [PreviewDesignV2Controller::class, 'agendamentos'])->name('agendamentos');
-        Route::get('/configuracoes', [PreviewDesignV2Controller::class, 'configuracoes'])->name('configuracoes');
-        Route::get('/configuracoes/conexao', [PreviewDesignV2Controller::class, 'conexao'])->name('configuracoes.conexao');
-        Route::get('/messenger/paginas', [PreviewDesignV2Controller::class, 'selecionarPagina'])->name('messenger.paginas');
-        Route::get('/entrar', [PreviewDesignV2Controller::class, 'entrar'])->name('entrar');
-        Route::get('/cadastro', [PreviewDesignV2Controller::class, 'cadastro'])->name('cadastro');
-        Route::get('/sessoes', [PreviewDesignV2Controller::class, 'sessoes'])->name('sessoes');
-        Route::get('/conta-suspensa', [PreviewDesignV2Controller::class, 'contaSuspensa'])->name('conta-suspensa');
-
-        Route::middleware('admin.plataforma')
-            ->prefix('admin')
-            ->name('admin.')
-            ->group(function (): void {
-                Route::get('/contas', [PreviewDesignV2Controller::class, 'adminContas'])->name('contas');
-                Route::get('/convites', [PreviewDesignV2Controller::class, 'adminConvites'])->name('convites');
-            });
-    });
-
-/*
- * Área de legado — páginas antigas, autenticadas, com os mesmos controllers.
- *
- * O nome das rotas começa com "legado." para que App\Support\Design escolha o
- * componente antigo. As ações de escrita continuam nos endpoints de produção;
- * esta área é uma referência visual, não uma segunda aplicação.
- */
-Route::middleware('guest')->group(function (): void {
-    Route::get('/legado/entrar', [LoginController::class, 'criar'])->name('legado.login');
-    Route::get('/legado/cadastro', [CadastroController::class, 'criar'])->name('legado.cadastro');
-    Route::get('/legado/login/sessoes', [LoginController::class, 'sessoes'])->name('legado.login.sessoes');
-});
-
-Route::get('/legado/conta-suspensa', ContaSuspensaController::class)->name('legado.conta.suspensa');
-
-Route::middleware(['auth', 'conta.ativa'])
-    ->prefix('legado')
-    ->name('legado.')
-    ->group(function (): void {
-        Route::get('/', ConversaController::class)->name('pagina-inicial');
-        Route::get('/painel', PaginaInicialController::class)->name('painel');
-        Route::get('/conversas', ConversaController::class)->name('conversas.index');
-        Route::get('/contatos/{contato}/historico', HistoricoContatoController::class)->name('contatos.historico');
-        Route::get('/fluxos', [FluxoController::class, 'index'])->name('fluxos.index');
-        Route::get('/fluxos/criar', [FluxoController::class, 'create'])->name('fluxos.create');
-        Route::get('/fluxos/{fluxo}/editar', [FluxoController::class, 'edit'])->name('fluxos.edit');
-        Route::get('/agendamentos', [AgendamentoController::class, 'index'])->name('agendamentos.index');
-        Route::get('/configuracoes', ConfiguracoesController::class)->name('configuracoes.index');
-    });
-
-Route::middleware(['auth', 'conta.ativa', 'admin.plataforma'])
-    ->prefix('legado/admin/convites')
-    ->name('legado.admin.convites.')
-    ->group(function (): void {
-        Route::get('/', [ConviteController::class, 'index'])->name('index');
-        Route::get('/emitir', [ConviteController::class, 'criar'])->name('create');
     });
 
 // Webhook do Messenger: chamado pelo Facebook, sem sessão autenticada

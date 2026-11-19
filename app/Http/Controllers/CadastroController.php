@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\User;
-use App\Support\Design;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +23,7 @@ class CadastroController extends Controller
     {
         abort_unless(config('flowchat.cadastro_publico'), 404);
 
-        return Inertia::render(Design::componente('V2/Cadastro', 'Cadastro'));
+        return Inertia::render('V2/Cadastro');
     }
 
     /**

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\Design;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +18,7 @@ class ConversaController extends Controller
     {
         $origensDisponiveis = Schema::hasTable('origens_contato');
 
-        return Inertia::render(Design::componente('V2/Conversas', 'Conversas'), [
+        return Inertia::render('V2/Conversas', [
             // Somente avaliada na visita completa ou quando pedida no reload parcial
             'conversas' => fn () => $this->consultaConversas($request, $origensDisponiveis)
                 ->orderByDesc('id')

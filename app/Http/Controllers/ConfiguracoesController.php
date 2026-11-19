@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Support\Design;
 use App\Support\FusosHorarios;
 use Closure;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +24,7 @@ class ConfiguracoesController extends Controller
         $utilizador = $request->user();
         $dadosFuso = $utilizador?->dadosFusoHorario();
 
-        return Inertia::render(Design::componente('V2/Configuracoes', 'Configuracoes'), [
+        return Inertia::render('V2/Configuracoes', [
             // A configuração regional pertence à conta (usuário proprietário),
             // não a fluxos individuais — esta é a base para o futuro
             // isolamento multi-conta

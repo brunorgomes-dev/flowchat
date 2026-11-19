@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\Design;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,6 +20,6 @@ class ContaSuspensaController extends Controller
             return redirect()->route('pagina-inicial');
         }
 
-        return Inertia::render(Design::componente('V2/ContaSuspensa', 'ContaSuspensa'));
+        return Inertia::render('V2/ContaSuspensa');
     }
 }

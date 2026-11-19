@@ -191,10 +191,6 @@
         display: none;
     }
 
-    .v2-layout-rail__rodape--compacto .v2-layout-rail__legado {
-        display: none;
-    }
-
     .v2-layout-usuario--compacto {
         margin-top: 0;
         flex-direction: column;

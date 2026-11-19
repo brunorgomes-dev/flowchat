@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import {
-    ArrowLeft,
     CalendarClock,
     LayoutDashboard,
     LogOut,
@@ -28,8 +27,6 @@ import './layout-v2.css';
  * Casca da interface padrão (design V2).
  *
  * As páginas reais continuam recebendo os props dos controllers existentes.
- * O design anterior fica acessível em /legado e o preview com fixtures em
- * /preview/design-v2.
  */
 
 export const gruposDeNavegacao = [
@@ -380,13 +377,6 @@ export default function LayoutV2({ children, semNavegacao = false }) {
                             {usuario?.fuso?.confirmado === false ? 'Fuso pendente' : 'Operação ativa'}
                         </span>
                         <Usuario usuario={usuario} aoSair={sair} compacto={railCompacto} />
-                        <Link
-                            href="/legado/painel"
-                            className="v2-layout-rail__legado mt-2 inline-flex items-center gap-1.5 text-[0.6875rem] underline underline-offset-2 hover:text-[var(--v2-rail-ink)]"
-                        >
-                            <ArrowLeft className="size-3" aria-hidden="true" />
-                            Design anterior (legado)
-                        </Link>
                     </div>
                 </aside>
 
@@ -477,13 +467,6 @@ export default function LayoutV2({ children, semNavegacao = false }) {
 
                         <div className="v2-layout-gaveta__rodape">
                             <Usuario usuario={usuario} aoSair={sair} />
-                            <Link
-                                href="/legado/painel"
-                                className="mt-2 inline-flex items-center gap-1.5 text-[0.6875rem] underline underline-offset-2 hover:text-[var(--v2-rail-ink)]"
-                            >
-                                <ArrowLeft className="size-3" aria-hidden="true" />
-                                Design anterior (legado)
-                            </Link>
                         </div>
                     </aside>
                 </div>
