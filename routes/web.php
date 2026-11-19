@@ -100,44 +100,6 @@ Route::middleware(['auth', 'conta.ativa', 'admin.plataforma'])
         Route::post('/{account}/reativar', [AdminContaController::class, 'reativar'])->name('reativar');
     });
 
-/*
- * Área de legado — páginas antigas, autenticadas, com os mesmos controllers.
- *
- * O nome das rotas começa com "legado." para que App\Support\Design escolha o
- * componente antigo. As ações de escrita continuam nos endpoints de produção;
- * esta área é uma referência visual, não uma segunda aplicação.
- */
-Route::middleware('guest')->group(function (): void {
-    Route::get('/legado/entrar', [LoginController::class, 'criar'])->name('legado.login');
-    Route::get('/legado/cadastro', [CadastroController::class, 'criar'])->name('legado.cadastro');
-    Route::get('/legado/login/sessoes', [LoginController::class, 'sessoes'])->name('legado.login.sessoes');
-});
-
-Route::get('/legado/conta-suspensa', ContaSuspensaController::class)->name('legado.conta.suspensa');
-
-Route::middleware(['auth', 'conta.ativa'])
-    ->prefix('legado')
-    ->name('legado.')
-    ->group(function (): void {
-        Route::get('/', ConversaController::class)->name('pagina-inicial');
-        Route::get('/painel', PaginaInicialController::class)->name('painel');
-        Route::get('/conversas', ConversaController::class)->name('conversas.index');
-        Route::get('/contatos/{contato}/historico', HistoricoContatoController::class)->name('contatos.historico');
-        Route::get('/fluxos', [FluxoController::class, 'index'])->name('fluxos.index');
-        Route::get('/fluxos/criar', [FluxoController::class, 'create'])->name('fluxos.create');
-        Route::get('/fluxos/{fluxo}/editar', [FluxoController::class, 'edit'])->name('fluxos.edit');
-        Route::get('/agendamentos', [AgendamentoController::class, 'index'])->name('agendamentos.index');
-        Route::get('/configuracoes', ConfiguracoesController::class)->name('configuracoes.index');
-    });
-
-Route::middleware(['auth', 'conta.ativa', 'admin.plataforma'])
-    ->prefix('legado/admin/convites')
-    ->name('legado.admin.convites.')
-    ->group(function (): void {
-        Route::get('/', [ConviteController::class, 'index'])->name('index');
-        Route::get('/emitir', [ConviteController::class, 'criar'])->name('create');
-    });
-
 // Webhook do Messenger: chamado pelo Facebook, sem sessão autenticada
 Route::get('/webhook/messenger', [WebhookMessengerController::class, 'verificar']);
 Route::post('/webhook/messenger', [WebhookMessengerController::class, 'receber']);

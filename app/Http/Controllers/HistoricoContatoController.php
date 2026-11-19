@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Contato;
-use App\Support\Design;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,7 +17,7 @@ class HistoricoContatoController extends Controller
     {
         $contato = $request->user()->account->contatos()->findOrFail($contato);
 
-        return Inertia::render(Design::componente('V2/HistoricoContato', 'HistoricoContato'), [
+        return Inertia::render('V2/HistoricoContato', [
             'contato' => $contato,
             'mensagens' => $contato->mensagens()->orderBy('id')->get(),
         ]);

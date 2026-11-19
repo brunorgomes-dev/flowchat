@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\MessengerIntegration;
-use App\Support\Design;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -166,7 +165,7 @@ class ConectarMessengerController extends Controller
             return $this->falha($request, 'A lista de Páginas expirou. Conecte o Facebook novamente.');
         }
 
-        return Inertia::render(Design::componente('V2/SelecionarPagina', 'SelecionarPaginaMessenger'), [
+        return Inertia::render('V2/SelecionarPagina', [
             'paginas' => collect($paginas)->map(fn (array $pagina): array => [
                 'id' => $pagina['id'],
                 'nome' => $pagina['name'],

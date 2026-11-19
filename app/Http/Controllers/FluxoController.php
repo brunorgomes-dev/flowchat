@@ -7,7 +7,6 @@ use App\Models\Fluxo;
 use App\Models\RegraInicioFluxo;
 use App\Models\User;
 use App\Support\ArmazenamentoMidia;
-use App\Support\Design;
 use App\Support\MidiaEtapa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,7 +26,7 @@ class FluxoController extends Controller
      */
     public function index(Request $request): Response
     {
-        return Inertia::render(Design::componente('V2/Fluxos', 'Fluxos'), [
+        return Inertia::render('V2/Fluxos', [
             'fluxos' => $request->user()->account->fluxos()->with(['etapas', 'regras'])
                 ->withCount(['execucoes', 'agendamentos'])
                 ->orderBy('id')
@@ -40,7 +39,7 @@ class FluxoController extends Controller
      */
     public function create(Request $request): Response
     {
-        return Inertia::render(Design::componente('V2/EditorFluxo', 'EditorFluxo'), [
+        return Inertia::render('V2/EditorFluxo', [
             'fluxo' => null,
             ...$this->recursosDoEditor($request->user()),
         ]);
@@ -53,7 +52,7 @@ class FluxoController extends Controller
     {
         $fluxo = $request->user()->account->fluxos()->findOrFail($fluxo);
 
-        return Inertia::render(Design::componente('V2/EditorFluxo', 'EditorFluxo'), [
+        return Inertia::render('V2/EditorFluxo', [
             'fluxo' => $fluxo->load(['etapas.condicoes', 'regras']),
             ...$this->recursosDoEditor($request->user()),
         ]);
