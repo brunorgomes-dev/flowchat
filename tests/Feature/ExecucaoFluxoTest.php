@@ -78,6 +78,27 @@ class ExecucaoFluxoTest extends TestCase
         $this->assertSame(1, ExecucaoFluxo::where('contato_id', 1)->count());
     }
 
+    public function test_somente_o_fluxo_ativo_mais_antigo_inicia_no_mesmo_gatilho(): void
+    {
+        Http::fake();
+
+        $antigo = $this->conta->fluxos()->create(['nome' => 'Antigo', 'ativo' => true]);
+        $antigo->etapas()->create(['ordem' => 1, 'texto' => 'Mensagem do fluxo antigo', 'pausa_segundos' => 0]);
+        $antigo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
+
+        $novo = $this->conta->fluxos()->create(['nome' => 'Novo', 'ativo' => true]);
+        $novo->etapas()->create(['ordem' => 1, 'texto' => 'Mensagem do fluxo novo', 'pausa_segundos' => 0]);
+        $novo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
+
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
+
+        $this->assertSame(1, ExecucaoFluxo::count());
+        $this->assertSame($antigo->id, ExecucaoFluxo::first()->fluxo_id);
+        $this->assertSame(1, Mensagem::where('direcao', 'enviada')->where('texto', 'Mensagem do fluxo antigo')->count());
+        $this->assertSame(0, Mensagem::where('direcao', 'enviada')->where('texto', 'Mensagem do fluxo novo')->count());
+        $this->assertSame(1, LogSistema::where('evento', 'fluxo_iniciado')->count());
+    }
+
     public function test_envio_usa_uma_tentativa_e_termina_antes_do_timeout_do_worker(): void
     {
         $job = new EnviarEtapaFluxo(1);
