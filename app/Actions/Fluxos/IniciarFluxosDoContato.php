@@ -1,0 +1,152 @@
+<?php
+
+namespace App\Actions\Fluxos;
+
+use App\Jobs\EnviarEtapaFluxo;
+use App\Models\Account;
+use App\Models\Contato;
+use App\Models\ExecucaoFluxo;
+use App\Models\Fluxo;
+use App\Models\LogSistema;
+use App\Support\Contatos\JanelaDeMensagemLivre;
+use Carbon\CarbonInterface;
+
+/**
+ * Decide se o evento inicia um fluxo automático e, quando inicia, cria a
+ * execução e enfileira a primeira etapa.
+ */
+final class IniciarFluxosDoContato
+{
+    public function __construct(private readonly JanelaDeMensagemLivre $janela) {}
+
+    public function executar(Account $conta, Contato $contato): void
+    {
+        // Não inicia novo fluxo se já existe execução em andamento
+        $emAndamento = ExecucaoFluxo::where('contato_id', $contato->id)
+            ->whereNull('concluida_em')
+            ->exists();
+        if ($emAndamento) {
+            return;
+        }
+
+        // Gatilhos aplicáveis ao evento; um mesmo fluxo inicia uma única vez
+        // (whereHas não duplica o fluxo mesmo se dois gatilhos casarem).
+        $gatilhos = ['mensagem_recebida'];
+        if ($contato->wasRecentlyCreated) {
+            $gatilhos[] = 'novo_contato';
+        }
+
+        // Quando mais de um fluxo ativo casa com o mesmo evento, somente o
+        // mais antigo inicia: disparar todos entregava duas sequências
+        // intercaladas ao mesmo contato.
+        $fluxo = $conta->fluxos()->where('ativo', true)
+            ->whereHas('regras', fn ($consulta) => $consulta
+                ->where('ativo', true)
+                ->whereIn('gatilho', $gatilhos))
+            ->orderBy('id')
+            ->first();
+
+        if ($fluxo === null) {
+            return;
+        }
+
+        // A janela de horário controla apenas o início automático do fluxo;
+        // a execução manual e os agendamentos existentes não são afetados.
+        $fuso = $conta->timezone ?: config('app.timezone');
+        $agoraLocal = now($fuso);
+        if ($fluxo->horarioInicioConfigurado() && ! $fluxo->dentroDoHorarioInicio($agoraLocal)) {
+            $this->tratarInicioForaDoHorario($contato, $fluxo, $agoraLocal);
+
+            return;
+        }
+
+        // Um início direto substitui agendamentos pendentes já vencidos do
+        // mesmo fluxo e contato, evitando uma segunda execução do mesmo evento
+        $substituidos = $conta->agendamentos()->where('fluxo_id', $fluxo->id)
+            ->where('contato_id', $contato->id)
+            ->where('estado', 'pendente')
+            ->where('executar_em', '<=', now())
+            ->update(['estado' => 'cancelado']);
+
+        if ($substituidos > 0) {
+            LogSistema::create([
+                'account_id' => $conta->id,
+                'evento' => 'agendamento_cancelado',
+                'descricao' => "Agendamento vencido do fluxo {$fluxo->nome} cancelado porque o fluxo foi iniciado diretamente pelo PSID {$contato->psid}",
+            ]);
+        }
+
+        $execucao = $conta->execucoes()->create([
+            'contato_id' => $contato->id,
+            'fluxo_id' => $fluxo->id,
+            'etapa_atual' => 1,
+        ]);
+
+        LogSistema::create(['account_id' => $conta->id, 'evento' => 'fluxo_iniciado', 'descricao' => "PSID {$contato->psid} iniciou o fluxo {$fluxo->nome}"]);
+
+        EnviarEtapaFluxo::dispatch($execucao->id);
+    }
+
+    /**
+     * Aplica o comportamento configurado quando a mensagem chega fora da
+     * janela permitida de início do fluxo.
+     */
+    private function tratarInicioForaDoHorario(Contato $contato, Fluxo $fluxo, CarbonInterface $agoraLocal): void
+    {
+        $conta = $contato->account;
+        if ($fluxo->fora_horario !== 'aguardar') {
+            LogSistema::create([
+                'account_id' => $conta->id,
+                'evento' => 'fluxo_fora_horario',
+                'descricao' => "PSID {$contato->psid}: fluxo {$fluxo->nome} fora do horário permitido, início não realizado",
+            ]);
+
+            return;
+        }
+
+        // Evita agendamentos duplicados para o mesmo fluxo e contato,
+        // inclusive quando o webhook recebe novamente o mesmo evento
+        $jaPendente = $conta->agendamentos()->where('fluxo_id', $fluxo->id)
+            ->where('contato_id', $contato->id)
+            ->where('estado', 'pendente')
+            ->exists();
+
+        if ($jaPendente) {
+            return;
+        }
+
+        $executarEm = $fluxo->proximoInicioPermitido($agoraLocal)?->timezone(config('app.timezone'));
+        if ($executarEm === null) {
+            return;
+        }
+
+        // A espera automática só pode ser agendada dentro da janela de
+        // mensagem livre; sem instante conhecido ou além do limite (24 h,
+        // exclusivo), o agendamento não é criado.
+        if ($this->janela->disponivel()) {
+            $limite = $this->janela->limite($contato);
+            if ($limite === null || $executarEm->greaterThanOrEqualTo($limite)) {
+                LogSistema::create([
+                    'account_id' => $conta->id,
+                    'evento' => 'fluxo_aguardando_sem_janela',
+                    'descricao' => "PSID {$contato->psid}: fluxo {$fluxo->nome} não foi agendado porque a janela de 24 horas da Meta terminaria antes do início permitido",
+                ]);
+
+                return;
+            }
+        }
+
+        $conta->agendamentos()->create([
+            'fluxo_id' => $fluxo->id,
+            'contato_id' => $contato->id,
+            'executar_em' => $executarEm,
+            'estado' => 'pendente',
+        ]);
+
+        LogSistema::create([
+            'account_id' => $conta->id,
+            'evento' => 'fluxo_aguardando_horario',
+            'descricao' => "PSID {$contato->psid}: fluxo {$fluxo->nome} agendado para {$executarEm->format('d/m/Y H:i')}",
+        ]);
+    }
+}
