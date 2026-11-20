@@ -21,7 +21,10 @@ class WebhookMessengerController extends Controller
         $token = $request->query('hub_verify_token');
         $tokenConfigurado = config('services.messenger.verify_token');
 
-        if ($modo === 'subscribe' && $tokenConfigurado !== null && $token === $tokenConfigurado) {
+        // Comparação em tempo constante: evita descobrir o token por diferença
+        // de tempo entre as respostas.
+        if ($modo === 'subscribe' && is_string($tokenConfigurado) && $tokenConfigurado !== ''
+            && is_string($token) && hash_equals($tokenConfigurado, $token)) {
             return response($request->query('hub_challenge', ''));
         }
 

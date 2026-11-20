@@ -33,6 +33,14 @@ class WebhookMessengerTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_verificacao_rejeita_quando_o_token_nao_esta_configurado(): void
+    {
+        config(['services.messenger.verify_token' => '']);
+
+        $this->get('/webhook/messenger?hub_mode=subscribe&hub_verify_token=&hub_challenge=desafio123')
+            ->assertForbidden();
+    }
+
     public function test_recebimento_despacha_processamento_da_mensagem(): void
     {
         Queue::fake();

@@ -76,56 +76,61 @@ class ProcessarMensagemEntrante implements ShouldQueue
         }
 
         // Gatilhos aplicáveis ao evento; um mesmo fluxo inicia uma única vez
-        // (whereHas não duplica o fluxo mesmo se dois gatilhos casarem)
+        // (whereHas não duplica o fluxo mesmo se dois gatilhos casarem).
         $gatilhos = ['mensagem_recebida'];
         if ($contato->wasRecentlyCreated) {
             $gatilhos[] = 'novo_contato';
         }
 
-        $fluxos = $conta->fluxos()->where('ativo', true)
+        // Quando mais de um fluxo ativo casa com o mesmo evento, somente o
+        // mais antigo inicia: disparar todos entregava duas sequências
+        // intercaladas ao mesmo contato.
+        $fluxo = $conta->fluxos()->where('ativo', true)
             ->whereHas('regras', fn ($consulta) => $consulta
                 ->where('ativo', true)
                 ->whereIn('gatilho', $gatilhos))
             ->orderBy('id')
-            ->get();
+            ->first();
 
-        foreach ($fluxos as $fluxo) {
-            // A janela de horário controla apenas o início automático do fluxo;
-            // a execução manual e os agendamentos existentes não são afetados.
-            $fuso = $conta->timezone ?: config('app.timezone');
-            $agoraLocal = now($fuso);
-            if ($fluxo->horarioInicioConfigurado() && ! $fluxo->dentroDoHorarioInicio($agoraLocal)) {
-                $this->tratarInicioForaDoHorario($contato, $fluxo, $agoraLocal);
-
-                continue;
-            }
-
-            // Um início direto substitui agendamentos pendentes já vencidos do
-            // mesmo fluxo e contato, evitando uma segunda execução do mesmo evento
-            $substituidos = $conta->agendamentos()->where('fluxo_id', $fluxo->id)
-                ->where('contato_id', $contato->id)
-                ->where('estado', 'pendente')
-                ->where('executar_em', '<=', now())
-                ->update(['estado' => 'cancelado']);
-
-            if ($substituidos > 0) {
-                LogSistema::create([
-                    'account_id' => $conta->id,
-                    'evento' => 'agendamento_cancelado',
-                    'descricao' => "Agendamento vencido do fluxo {$fluxo->nome} cancelado porque o fluxo foi iniciado diretamente pelo PSID {$this->psid}",
-                ]);
-            }
-
-            $execucao = $conta->execucoes()->create([
-                'contato_id' => $contato->id,
-                'fluxo_id' => $fluxo->id,
-                'etapa_atual' => 1,
-            ]);
-
-            LogSistema::create(['account_id' => $conta->id, 'evento' => 'fluxo_iniciado', 'descricao' => "PSID {$this->psid} iniciou o fluxo {$fluxo->nome}"]);
-
-            EnviarEtapaFluxo::dispatch($execucao->id);
+        if ($fluxo === null) {
+            return;
         }
+
+        // A janela de horário controla apenas o início automático do fluxo;
+        // a execução manual e os agendamentos existentes não são afetados.
+        $fuso = $conta->timezone ?: config('app.timezone');
+        $agoraLocal = now($fuso);
+        if ($fluxo->horarioInicioConfigurado() && ! $fluxo->dentroDoHorarioInicio($agoraLocal)) {
+            $this->tratarInicioForaDoHorario($contato, $fluxo, $agoraLocal);
+
+            return;
+        }
+
+        // Um início direto substitui agendamentos pendentes já vencidos do
+        // mesmo fluxo e contato, evitando uma segunda execução do mesmo evento
+        $substituidos = $conta->agendamentos()->where('fluxo_id', $fluxo->id)
+            ->where('contato_id', $contato->id)
+            ->where('estado', 'pendente')
+            ->where('executar_em', '<=', now())
+            ->update(['estado' => 'cancelado']);
+
+        if ($substituidos > 0) {
+            LogSistema::create([
+                'account_id' => $conta->id,
+                'evento' => 'agendamento_cancelado',
+                'descricao' => "Agendamento vencido do fluxo {$fluxo->nome} cancelado porque o fluxo foi iniciado diretamente pelo PSID {$this->psid}",
+            ]);
+        }
+
+        $execucao = $conta->execucoes()->create([
+            'contato_id' => $contato->id,
+            'fluxo_id' => $fluxo->id,
+            'etapa_atual' => 1,
+        ]);
+
+        LogSistema::create(['account_id' => $conta->id, 'evento' => 'fluxo_iniciado', 'descricao' => "PSID {$this->psid} iniciou o fluxo {$fluxo->nome}"]);
+
+        EnviarEtapaFluxo::dispatch($execucao->id);
     }
 
     /**
