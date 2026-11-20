@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Fluxos\StoreFluxoRequest;
+use App\Http\Requests\Fluxos\UpdateFluxoRequest;
 use App\Models\EtapaFluxo;
 use App\Models\Fluxo;
 use App\Models\RegraInicioFluxo;
@@ -61,34 +63,9 @@ class FluxoController extends Controller
     /**
      * Cria um novo fluxo.
      */
-    public function store(Request $request, ArmazenamentoMidia $armazenamento): RedirectResponse
+    public function store(StoreFluxoRequest $request, ArmazenamentoMidia $armazenamento): RedirectResponse
     {
-        $dados = $request->validate([
-            'nome' => ['required', 'string', 'max:255'],
-            'ativo' => ['sometimes', 'boolean'],
-            'etapas' => ['sometimes', 'array'],
-            'etapas.*.id' => ['prohibited'],
-            'etapas.*.tipo' => ['sometimes', 'in:mensagem,condicao_horario'],
-            'etapas.*.texto' => ['nullable', 'string'],
-            'etapas.*.pausa_segundos' => ['required', 'integer', 'min:0'],
-            'etapas.*.tipo_conteudo' => ['sometimes', 'in:texto,imagem,audio,video,arquivo'],
-            'etapas.*.anexo' => ['nullable', 'file', 'max:25600'],
-            'etapas.*.remover_anexo' => ['sometimes', 'boolean'],
-            'etapas.*.indicador_digitacao_ativo' => ['sometimes', 'boolean'],
-            'etapas.*.indicador_digitacao_segundos' => ['sometimes', 'integer', 'min:1', 'max:20'],
-            'etapas.*.condicoes' => ['sometimes', 'array'],
-            'etapas.*.condicoes.*.inicio' => ['required', 'date_format:H:i'],
-            'etapas.*.condicoes.*.fim' => ['required', 'date_format:H:i'],
-            'etapas.*.condicoes.*.destino_ordem' => ['required', 'integer', 'min:1'],
-            'etapas.*.destino_nao_ordem' => ['nullable', 'integer', 'min:1'],
-            'etapas.*.encerra_apos' => ['sometimes', 'boolean'],
-            'regras' => ['sometimes', 'array'],
-            'horario' => ['sometimes', 'array'],
-            'horario.ativo' => ['sometimes', 'boolean'],
-            'horario.inicio' => ['nullable', 'date_format:H:i'],
-            'horario.fim' => ['nullable', 'date_format:H:i'],
-            'horario.fora_horario' => ['nullable', 'in:nao_iniciar,aguardar'],
-        ]);
+        $dados = $request->validated();
 
         $atributosHorario = $this->atributosHorario($dados, $request->user());
         $etapas = $dados['etapas'] ?? [];
@@ -125,35 +102,10 @@ class FluxoController extends Controller
     /**
      * Atualiza nome, status e etapas do fluxo.
      */
-    public function update(Request $request, int $fluxo, ArmazenamentoMidia $armazenamento): RedirectResponse
+    public function update(UpdateFluxoRequest $request, int $fluxo, ArmazenamentoMidia $armazenamento): RedirectResponse
     {
         $fluxo = $request->user()->account->fluxos()->findOrFail($fluxo);
-        $dados = $request->validate([
-            'nome' => ['required', 'string', 'max:255'],
-            'ativo' => ['required', 'boolean'],
-            'etapas' => ['present', 'array'],
-            'etapas.*.id' => ['sometimes', 'nullable', 'integer', 'min:1'],
-            'etapas.*.tipo' => ['sometimes', 'in:mensagem,condicao_horario'],
-            'etapas.*.texto' => ['nullable', 'string'],
-            'etapas.*.pausa_segundos' => ['required', 'integer', 'min:0'],
-            'etapas.*.tipo_conteudo' => ['sometimes', 'in:texto,imagem,audio,video,arquivo'],
-            'etapas.*.anexo' => ['nullable', 'file', 'max:25600'],
-            'etapas.*.remover_anexo' => ['sometimes', 'boolean'],
-            'etapas.*.indicador_digitacao_ativo' => ['sometimes', 'boolean'],
-            'etapas.*.indicador_digitacao_segundos' => ['sometimes', 'integer', 'min:1', 'max:20'],
-            'etapas.*.condicoes' => ['sometimes', 'array'],
-            'etapas.*.condicoes.*.inicio' => ['required', 'date_format:H:i'],
-            'etapas.*.condicoes.*.fim' => ['required', 'date_format:H:i'],
-            'etapas.*.condicoes.*.destino_ordem' => ['required', 'integer', 'min:1'],
-            'etapas.*.destino_nao_ordem' => ['nullable', 'integer', 'min:1'],
-            'etapas.*.encerra_apos' => ['sometimes', 'boolean'],
-            'regras' => ['sometimes', 'array'],
-            'horario' => ['sometimes', 'array'],
-            'horario.ativo' => ['sometimes', 'boolean'],
-            'horario.inicio' => ['nullable', 'date_format:H:i'],
-            'horario.fim' => ['nullable', 'date_format:H:i'],
-            'horario.fora_horario' => ['nullable', 'in:nao_iniciar,aguardar'],
-        ]);
+        $dados = $request->validated();
 
         $atributosHorario = $this->atributosHorario($dados, $request->user());
         $etapasExistentes = $fluxo->etapas()->get();
