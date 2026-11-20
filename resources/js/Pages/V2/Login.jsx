@@ -1,7 +1,7 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
-import { ArrowRight, Check, LoaderCircle, ShieldCheck } from 'lucide-react';
+import { ArrowRight, LoaderCircle, ShieldCheck } from 'lucide-react';
 import LayoutV2 from '@/components/v2/LayoutV2';
-import { MarcaFlowChat } from '@/components/MarcaFlowChat';
+import PainelAcesso from '@/components/v2/auth/PainelAcesso';
 import { Aviso, Campo, CampoSenha } from '@/components/v2/pecas';
 
 export default function Login() {
@@ -17,38 +17,21 @@ export default function Login() {
 
     return (
         <div className="v2-auth">
-            <div className="v2-auth__marca">
-                <div className="flex items-center gap-2.5">
-                    <MarcaFlowChat tamanho="lg" />
-                    <div>
-                        <p className="text-[0.9375rem] font-semibold">FlowChat</p>
-                        <p className="text-[0.6875rem] text-[var(--v2-rail-ink-2)]">Automação de conversas no Messenger</p>
-                    </div>
-                </div>
-
-                <div>
-                    <p className="v2-auth__frase">A conversa começa no anúncio e continua no atendimento.</p>
-                    <ul className="v2-auth__lista mt-5">
-                        <li>
-                            <Check className="mt-0.5 size-3.5 shrink-0 text-[var(--v2-areia)]" aria-hidden="true" />
-                            Fluxos com pausas, mídia e ramificação por horário.
-                        </li>
-                        <li>
-                            <Check className="mt-0.5 size-3.5 shrink-0 text-[var(--v2-areia)]" aria-hidden="true" />
-                            Origem de cada contato preservada a partir do anúncio.
-                        </li>
-                        <li>
-                            <Check className="mt-0.5 size-3.5 shrink-0 text-[var(--v2-areia)]" aria-hidden="true" />
-                            Uma caixa de atendimento com histórico incremental.
-                        </li>
-                    </ul>
-                </div>
-
-                <p className="flex items-center gap-2 text-[0.6875rem] text-[var(--v2-rail-ink-2)]">
-                    <ShieldCheck className="size-3.5" aria-hidden="true" />
-                    Cada conta vê apenas as suas próprias conversas.
-                </p>
-            </div>
+            <PainelAcesso
+                frase="A conversa começa no anúncio e continua no atendimento."
+                itens={[
+                    'Fluxos com pausas, mídia e ramificação por horário.',
+                    'Origem de cada contato preservada a partir do anúncio.',
+                    'Uma caixa de atendimento com histórico incremental.',
+                ]}
+                rodape={
+                    <>
+                        <ShieldCheck className="size-3.5" aria-hidden="true" />
+                        Cada conta vê apenas as suas próprias conversas.
+                    </>
+                }
+                rodapeComIcone
+            />
 
             <div className="v2-auth__formulario">
                 <div className="v2-auth__cartao">

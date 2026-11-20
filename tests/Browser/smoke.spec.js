@@ -83,4 +83,14 @@ test.describe('sessao', () => {
         await page.goto('/painel');
         await expect(page).toHaveURL(/\/login$/);
     });
+
+    test('senha errada mostra erro e nao entra', async ({ page }) => {
+        await page.goto('/login');
+        await page.locator('#login-email').fill(`naoexiste-${Date.now()}@example.test`);
+        await page.locator('#login-senha').fill('senha-errada');
+        await page.getByRole('button', { name: 'Entrar' }).click();
+
+        await expect(page).toHaveURL(/\/login$/);
+        await expect(page.getByText('Estas credenciais não correspondem a uma conta.')).toBeVisible();
+    });
 });
