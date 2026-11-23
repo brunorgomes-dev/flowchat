@@ -44,6 +44,37 @@ test('conversa abre a ficha do contato', async ({ page }) => {
     await expect(page).toHaveURL(/contato=/, { timeout: 15_000 });
 });
 
+test('conversas sincroniza busca, filtro de anuncio e contato na URL', async ({ page }) => {
+    await page.goto('/conversas');
+
+    await page.getByLabel('Buscar conversas').fill('Contato E2E');
+    await expect(page).toHaveURL(/busca=Contato/, { timeout: 15_000 });
+    await expect(page.getByText('Contato E2E').first()).toBeVisible();
+
+    await page.goto('/conversas?ad_id=123');
+    await expect(page.getByText('Anúncio 123')).toBeVisible();
+    await expect(page.getByText('Nenhuma conversa encontrada')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Remover filtro' }).click();
+    await expect(page).not.toHaveURL(/ad_id=/);
+    await expect(page.getByText('Contato E2E').first()).toBeVisible();
+
+    await page.getByRole('button', { name: /Contato E2E/ }).first().click();
+    await expect(page).toHaveURL(/contato=\d+/, { timeout: 15_000 });
+    await expect(page.getByRole('region', { name: 'Conversa selecionada' }).getByText('Ola, teste E2E')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Detalhes' }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toBeHidden();
+
+    await page.getByLabel('Buscar conversas').fill('zzz-inexistente');
+    await expect(page.getByText('Nenhuma conversa encontrada')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Limpar busca e filtros' }).click();
+    await expect(page).not.toHaveURL(/busca=/);
+    await expect(page.getByText('Contato E2E').first()).toBeVisible();
+});
+
 test('cria fluxo com etapa, salva e recarrega', async ({ page }) => {
     await page.goto('/fluxos/criar');
 
