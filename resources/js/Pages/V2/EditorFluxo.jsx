@@ -1,38 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, router } from '@inertiajs/react';
-import { toast } from 'sonner';
-import { ArrowLeft, Check, CheckCircle2, CircleDot, LoaderCircle, X } from 'lucide-react';
 import LayoutV2 from '@/components/v2/LayoutV2';
-import { EditorCondicaoHorario } from '@/components/v2/editor/EditorCondicaoHorario';
-import { EditorEtapa } from '@/components/v2/editor/EditorEtapa';
-import { ListaEtapas } from '@/components/v2/editor/ListaEtapas';
-import { PreviaMensagem } from '@/components/v2/editor/PreviaMensagem';
-import { ResumoFluxo } from '@/components/v2/editor/ResumoFluxo';
+import BarraAcoesEditor from '@/components/v2/editor/BarraAcoesEditor';
+import CabecalhoEditor from '@/components/v2/editor/CabecalhoEditor';
 import { DialogoExcluirEtapa, DialogoSaida } from '@/components/v2/editor/Dialogos';
-import {
-    capturarEstado,
-    converterSegundosDoInput,
-    criarEtapaCondicaoVazia,
-    criarEtapaVazia,
-    estadoInicialDoFluxo,
-    estadosIguais,
-    estaAtivo,
-    formatarSegundosEmUnidade,
-    gatilhos,
-    INDICADOR_DIGITACAO_MAXIMO_SEGUNDOS,
-    INDICADOR_DIGITACAO_PADRAO_SEGUNDOS,
-    normalizarDestino,
-    PAUSA_PADRAO_SEGUNDOS,
-    prepararEtapas,
-    prepararGatilhos,
-    prepararHorario,
-    prepararPausas,
-    segundosIndicadorValidos,
-    validarCondicoesDasEtapas,
-    validarMidiaDasEtapas,
-} from '@/components/v2/editor/util';
-import { Interruptor } from '@/components/v2/editor/Interruptor';
+import PainelEtapasEditor from '@/components/v2/editor/PainelEtapasEditor';
+import PainelPreviaEditor from '@/components/v2/editor/PainelPreviaEditor';
+import useEditorFluxo from '@/components/v2/editor/useEditorFluxo';
 import '@/components/v2/editor/editor-fluxo.css';
+
+const paineis = [
+    { valor: 'estrutura', rotulo: 'Etapas' },
+    { valor: 'editar', rotulo: 'Editar' },
+    { valor: 'contexto', rotulo: 'Prévia' },
+];
 
 export default function EditorFluxoV2({
     fluxo = null,
@@ -42,919 +21,75 @@ export default function EditorFluxoV2({
     suportaMidia = false,
     fusoConta = null,
 }) {
-    const criando = !fluxo?.id;
-    const [nome, setNome] = useState(fluxo?.nome ?? '');
-    const [ativo, setAtivo] = useState(() => (criando ? true : estaAtivo(fluxo?.ativo)));
-    const [etapas, setEtapas] = useState(() => prepararEtapas(fluxo));
-    const [gatilhosAtivos, setGatilhosAtivos] = useState(() => prepararGatilhos(fluxo));
-    const [horario, setHorario] = useState(() => prepararHorario(fluxo));
-    const [pausasAtivas, setPausasAtivas] = useState(() => prepararPausas(prepararEtapas(fluxo)));
-    const [etapaSelecionada, setEtapaSelecionada] = useState(0);
-    const [estadoGravacao, setEstadoGravacao] = useState(criando ? 'alterado' : 'guardado');
-    const [erros, setErros] = useState({});
-    const [mensagemReordenacao, setMensagemReordenacao] = useState('');
-    const [etapaParaExcluir, setEtapaParaExcluir] = useState(null);
-    const [dadosBase, setDadosBase] = useState(() => {
-        const estadoPersistido = estadoInicialDoFluxo(fluxo);
-
-        return criando ? { ...estadoPersistido, ativo: true } : estadoPersistido;
-    });
-    const [avisoSaidaAberto, setAvisoSaidaAberto] = useState(false);
-    const [pausaUnidade, setPausaUnidade] = useState('segundos');
-    const [pausaInput, setPausaInput] = useState('');
-    const [painelAtivo, setPainelAtivo] = useState('editar');
-    const destinoSaidaRef = useRef(null);
-    const liberarSaidaRef = useRef(false);
-    const areaTextoRef = useRef(null);
-    const painelEdicaoRef = useRef(null);
-    const focoEdicaoPendenteRef = useRef(false);
-    const etapaAtual = etapas[etapaSelecionada] ?? null;
-
-    const temAlteracoes = !estadosIguais(
-        dadosBase,
-        capturarEstado({ nome, ativo, etapas, gatilhosAtivos, horario }),
-    );
-
-    const versaoFluxo = `${fluxo?.id ?? 'novo'}:${fluxo?.updated_at ?? ''}`;
-    const [sincronizacaoForcada, setSincronizacaoForcada] = useState(0);
-
-    useEffect(() => {
-        if (!fluxo?.id) {
-            return;
-        }
-
-        const etapasPersistidas = prepararEtapas(fluxo);
-        const gatilhosPersistidos = prepararGatilhos(fluxo);
-        const horarioPersistido = prepararHorario(fluxo);
-
-        setNome(fluxo.nome ?? '');
-        setAtivo(estaAtivo(fluxo?.ativo));
-        setEtapas(etapasPersistidas);
-        setGatilhosAtivos(gatilhosPersistidos);
-        setHorario(horarioPersistido);
-        setPausasAtivas(prepararPausas(etapasPersistidas));
-        setDadosBase(capturarEstado({
-            nome: fluxo.nome ?? '',
-            ativo: estaAtivo(fluxo?.ativo),
-            etapas: etapasPersistidas,
-            gatilhosAtivos: gatilhosPersistidos,
-            horario: horarioPersistido,
-        }));
-        setEstadoGravacao('guardado');
-        setErros({});
-        setEtapaSelecionada((atual) => Math.min(atual, Math.max(0, etapasPersistidas.length - 1)));
-    }, [versaoFluxo, sincronizacaoForcada]);
-
-    useEffect(() => {
-        if (!focoEdicaoPendenteRef.current || painelAtivo !== 'editar') {
-            return;
-        }
-
-        focoEdicaoPendenteRef.current = false;
-        painelEdicaoRef.current?.focus();
-    }, [etapaSelecionada, painelAtivo]);
-
-    useEffect(() => {
-        if (!temAlteracoes) {
-            return undefined;
-        }
-
-        const avisarAntesDeFechar = (evento) => {
-            evento.preventDefault();
-            evento.returnValue = '';
-        };
-
-        window.addEventListener('beforeunload', avisarAntesDeFechar);
-        const removerEventoAntesDaVisita = router.on('before', (evento) => {
-            const visita = evento.detail?.visit;
-
-            if ((visita?.method ?? 'get') !== 'get') {
-                return undefined;
-            }
-
-            if (liberarSaidaRef.current) {
-                liberarSaidaRef.current = false;
-                return undefined;
-            }
-
-            if (destinoSaidaRef.current !== null) {
-                return undefined;
-            }
-
-            destinoSaidaRef.current = visita?.url ? String(visita.url) : null;
-            setAvisoSaidaAberto(true);
-            evento.preventDefault();
-            return undefined;
-        });
-
-        return () => {
-            window.removeEventListener('beforeunload', avisarAntesDeFechar);
-            removerEventoAntesDaVisita();
-        };
-    }, [temAlteracoes]);
-
-    const marcarAlteracao = () => setEstadoGravacao('alterado');
-
-    const alterarNome = (valor) => {
-        setNome(valor);
-        setErros((errosAtuais) => ({ ...errosAtuais, nome: null }));
-        marcarAlteracao();
-    };
-
-    const selecionarEtapa = (indice) => {
-        setEtapaSelecionada(indice);
-
-        if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
-            focoEdicaoPendenteRef.current = true;
-        }
-
-        setPainelAtivo('editar');
-    };
-
-    const alterarEtapa = (indice, campo, valor) => {
-        setEtapas((etapasAtuais) => etapasAtuais.map((etapa, posicao) => (
-            posicao === indice ? { ...etapa, [campo]: valor } : etapa
-        )));
-        if (campo === 'encerra_apos' && valor) {
-            setPausasAtivas((pausasAtuais) => pausasAtuais.map((pausa, posicao) => (
-                posicao === indice ? false : pausa
-            )));
-        }
-        setErros((errosAtuais) => ({ ...errosAtuais, [`etapas.${indice}.${campo}`]: null }));
-        marcarAlteracao();
-    };
-
-    const alterarGatilho = (gatilho) => {
-        setGatilhosAtivos((estadoAtual) => ({ ...estadoAtual, [gatilho]: !estadoAtual[gatilho] }));
-        marcarAlteracao();
-    };
-
-    const alterarHorario = (campo, valor) => {
-        setHorario((estadoAtual) => ({ ...estadoAtual, [campo]: valor }));
-        setErros((errosAtuais) => ({ ...errosAtuais, horario: null }));
-        marcarAlteracao();
-    };
-
-    const adicionarEtapa = () => {
-        setEtapas((etapasAtuais) => [...etapasAtuais, criarEtapaVazia()]);
-        setPausasAtivas((pausasAtuais) => [...pausasAtuais, false]);
-        setEtapaSelecionada(etapas.length);
-        setErros((errosAtuais) => ({ ...errosAtuais, etapas: null }));
-        marcarAlteracao();
-    };
-
-    const adicionarCondicao = () => {
-        if (!podeCondicaoHorario) {
-            return;
-        }
-
-        setEtapas((etapasAtuais) => [...etapasAtuais, criarEtapaCondicaoVazia()]);
-        setPausasAtivas((pausasAtuais) => [...pausasAtuais, false]);
-        setEtapaSelecionada(etapas.length);
-        setErros((errosAtuais) => ({ ...errosAtuais, etapas: null }));
-        marcarAlteracao();
-    };
-
-    const remapearDestinoAposExclusao = (destino, indiceRemovido) => {
-        const ordem = Number(destino);
-
-        if (!Number.isInteger(ordem) || ordem < 1) {
-            return null;
-        }
-
-        if (ordem === indiceRemovido + 1) {
-            return null;
-        }
-
-        return ordem > indiceRemovido + 1 ? ordem - 1 : ordem;
-    };
-
-    const moverEtapa = (indice, deslocamento) => {
-        const novoIndice = indice + deslocamento;
-
-        if (novoIndice < 0 || novoIndice >= etapas.length) {
-            return;
-        }
-
-        const indicesNovos = etapas.map((_, indiceOriginal) => {
-            if (indiceOriginal === indice) {
-                return novoIndice;
-            }
-
-            if (indice < novoIndice && indiceOriginal > indice && indiceOriginal <= novoIndice) {
-                return indiceOriginal - 1;
-            }
-
-            if (indice > novoIndice && indiceOriginal >= novoIndice && indiceOriginal < indice) {
-                return indiceOriginal + 1;
-            }
-
-            return indiceOriginal;
-        });
-        let destinoInvalido = false;
-        const etapasComDestinosRemapeados = etapas.map((etapa, indiceOriginal) => {
-            if (etapa.tipo !== 'condicao_horario') {
-                return etapa;
-            }
-
-            const novaOrdemCondicao = indicesNovos[indiceOriginal] + 1;
-            const remapearDestino = (destino) => {
-                const ordemOriginal = normalizarDestino(destino);
-
-                if (ordemOriginal === null || ordemOriginal > etapas.length) {
-                    return destino;
-                }
-
-                const ordemDestino = indicesNovos[ordemOriginal - 1] + 1;
-
-                if (ordemDestino <= novaOrdemCondicao) {
-                    destinoInvalido = true;
-                }
-
-                return ordemDestino;
-            };
-
-            return {
-                ...etapa,
-                condicoes: (etapa.condicoes ?? []).map((condicao) => ({
-                    ...condicao,
-                    destino_ordem: remapearDestino(condicao.destino_ordem),
-                })),
-                destino_nao_ordem: remapearDestino(etapa.destino_nao_ordem),
-            };
-        });
-
-        if (destinoInvalido) {
-            const mensagem = 'Não é possível mover esta etapa: o movimento faria uma condição apontar para uma etapa anterior. Ajuste os destinos e tente novamente.';
-
-            toast.error(mensagem);
-            setMensagemReordenacao(mensagem);
-
-            return;
-        }
-
-        const novasEtapas = [...etapasComDestinosRemapeados];
-        const [etapaMovida] = novasEtapas.splice(indice, 1);
-        novasEtapas.splice(novoIndice, 0, etapaMovida);
-        const novasPausas = [...pausasAtivas];
-        const [pausaMovida] = novasPausas.splice(indice, 1);
-        novasPausas.splice(novoIndice, 0, pausaMovida);
-
-        setEtapas(novasEtapas);
-        setPausasAtivas(novasPausas);
-        setEtapaSelecionada(novoIndice);
-        setErros((errosAtuais) => Object.fromEntries(
-            Object.entries(errosAtuais).map(([campo, mensagemAtual]) => {
-                const correspondencia = campo.match(/^etapas\.(\d+)(.*)$/);
-
-                if (!correspondencia) {
-                    return [campo, mensagemAtual];
-                }
-
-                const indiceOriginal = Number(correspondencia[1]);
-
-                if (indiceOriginal >= indicesNovos.length) {
-                    return [campo, mensagemAtual];
-                }
-
-                return [`etapas.${indicesNovos[indiceOriginal]}${correspondencia[2]}`, mensagemAtual];
-            }),
-        ));
-        setMensagemReordenacao(`Etapa movida para a posição ${novoIndice + 1} de ${etapas.length}.`);
-        marcarAlteracao();
-    };
-
-    const confirmarExclusaoEtapa = () => {
-        if (etapaParaExcluir === null) {
-            return;
-        }
-
-        const indice = etapaParaExcluir;
-        const novasEtapas = etapas
-            .filter((_, posicao) => posicao !== indice)
-            .map((etapa) => {
-                if (etapa.tipo !== 'condicao_horario') {
-                    return etapa;
-                }
-
-                return {
-                    ...etapa,
-                    condicoes: (etapa.condicoes ?? []).map((condicao) => ({
-                        ...condicao,
-                        destino_ordem: remapearDestinoAposExclusao(condicao.destino_ordem, indice),
-                    })),
-                    destino_nao_ordem: remapearDestinoAposExclusao(etapa.destino_nao_ordem, indice),
-                };
-            });
-        const novasPausas = pausasAtivas.filter((_, posicao) => posicao !== indice);
-
-        setEtapas(novasEtapas);
-        setPausasAtivas(novasPausas);
-        setEtapaSelecionada(Math.min(indice, Math.max(0, novasEtapas.length - 1)));
-        setEtapaParaExcluir(null);
-        setErros({});
-        marcarAlteracao();
-    };
-
-    const alterarCondicao = (indiceEtapa, indiceCondicao, campo, valor) => {
-        setEtapas((etapasAtuais) => etapasAtuais.map((etapa, posicao) => {
-            if (posicao !== indiceEtapa) {
-                return etapa;
-            }
-
-            return {
-                ...etapa,
-                condicoes: (etapa.condicoes ?? []).map((condicao, posicaoCondicao) => (
-                    posicaoCondicao === indiceCondicao ? { ...condicao, [campo]: valor } : condicao
-                )),
-            };
-        }));
-        setErros((errosAtuais) => ({
-            ...errosAtuais,
-            [`etapas.${indiceEtapa}.condicoes.${indiceCondicao}.${campo}`]: null,
-        }));
-        marcarAlteracao();
-    };
-
-    const adicionarCondicaoNoBloco = (indiceEtapa) => {
-        setEtapas((etapasAtuais) => etapasAtuais.map((etapa, posicao) => (
-            posicao === indiceEtapa
-                ? { ...etapa, condicoes: [...(etapa.condicoes ?? []), { inicio: '', fim: '', destino_ordem: null }] }
-                : etapa
-        )));
-        setErros((errosAtuais) => ({ ...errosAtuais, [`etapas.${indiceEtapa}.condicoes`]: null }));
-        marcarAlteracao();
-    };
-
-    const removerCondicaoDoBloco = (indiceEtapa, indiceCondicao) => {
-        setEtapas((etapasAtuais) => etapasAtuais.map((etapa, posicao) => (
-            posicao === indiceEtapa
-                ? {
-                    ...etapa,
-                    condicoes: (etapa.condicoes ?? []).filter((_, posicaoCondicao) => posicaoCondicao !== indiceCondicao),
-                }
-                : etapa
-        )));
-        const prefixoCondicoes = `etapas.${indiceEtapa}.condicoes`;
-        setErros((errosAtuais) => Object.fromEntries(
-            Object.entries(errosAtuais).map(([campo, mensagem]) => {
-                if (campo === prefixoCondicoes) {
-                    return [campo, null];
-                }
-
-                if (!campo.startsWith(`${prefixoCondicoes}.`)) {
-                    return [campo, mensagem];
-                }
-
-                const [, , , indiceErro, ...restoCampo] = campo.split('.');
-                const posicaoErro = Number(indiceErro);
-
-                if (!Number.isInteger(posicaoErro) || posicaoErro < indiceCondicao) {
-                    return [campo, mensagem];
-                }
-
-                if (posicaoErro === indiceCondicao) {
-                    return [campo, null];
-                }
-
-                return [`${prefixoCondicoes}.${posicaoErro - 1}.${restoCampo.join('.')}`, mensagem];
-            }),
-        ));
-        marcarAlteracao();
-    };
-
-    const alternarPausa = (indice, habilitada) => {
-        setPausasAtivas((pausasAtuais) => pausasAtuais.map((pausa, posicao) => (
-            posicao === indice ? habilitada : pausa
-        )));
-
-        if (!habilitada) {
-            alterarEtapa(indice, 'pausa_segundos', 0);
-            return;
-        }
-
-        const segundosAtuais = Math.round(Number(etapas[indice].pausa_segundos) || 0);
-        if (segundosAtuais <= 0) {
-            alterarEtapa(indice, 'pausa_segundos', PAUSA_PADRAO_SEGUNDOS);
-        }
-
-        setPausaInput(formatarSegundosEmUnidade(
-            Math.max(segundosAtuais, segundosAtuais > 0 ? segundosAtuais : PAUSA_PADRAO_SEGUNDOS),
-            pausaUnidade,
-        ));
-        setErros((errosAtuais) => ({ ...errosAtuais, [`etapas.${indice}.pausa_segundos`]: null }));
-        marcarAlteracao();
-    };
-
-    const alternarIndicadorDigitacao = (indice, habilitado) => {
-        alterarEtapa(indice, 'indicador_digitacao_ativo', habilitado);
-
-        if (!habilitado) {
-            setErros((errosAtuais) => ({
-                ...errosAtuais,
-                [`etapas.${indice}.indicador_digitacao_segundos`]: null,
-            }));
-        }
-
-        const segundosAtuais = Number(etapas[indice]?.indicador_digitacao_segundos) || 0;
-        if (habilitado && segundosAtuais < 1) {
-            alterarEtapa(indice, 'indicador_digitacao_segundos', INDICADOR_DIGITACAO_PADRAO_SEGUNDOS);
-        }
-    };
-
-    const alterarSegundosIndicador = (indice, valor) => {
-        alterarEtapa(indice, 'indicador_digitacao_segundos', valor === '' ? '' : Number(valor));
-    };
-
-    const alterarUnidadePausa = (unidade) => {
-        if (unidade === pausaUnidade) {
-            return;
-        }
-
-        setPausaUnidade(unidade);
-
-        if (pausasAtivas[etapaSelecionada] && etapas[etapaSelecionada]) {
-            setPausaInput(formatarSegundosEmUnidade(etapas[etapaSelecionada].pausa_segundos, unidade));
-        }
-    };
-
-    const alterarPausaInput = (valor) => {
-        setPausaInput(valor);
-        alterarEtapa(etapaSelecionada, 'pausa_segundos', converterSegundosDoInput(valor, pausaUnidade));
-    };
-
-    useEffect(() => {
-        if (pausasAtivas[etapaSelecionada] && etapas[etapaSelecionada]) {
-            setPausaInput(formatarSegundosEmUnidade(etapas[etapaSelecionada].pausa_segundos, pausaUnidade));
-        }
-    }, [etapaSelecionada, pausaUnidade]);
-
-    const fecharAvisoSaida = () => {
-        setAvisoSaidaAberto(false);
-        destinoSaidaRef.current = null;
-    };
-
-    const confirmarSaidaSemGuardar = () => {
-        const destino = destinoSaidaRef.current;
-        setAvisoSaidaAberto(false);
-        destinoSaidaRef.current = null;
-
-        if (destino) {
-            liberarSaidaRef.current = true;
-            router.visit(destino);
-        }
-    };
-
-    const inserirVariavel = (variavel) => {
-        if (etapaSelecionada < 0 || !etapaAtual) {
-            return;
-        }
-
-        if (etapaAtual.tipo === 'condicao_horario' || (etapaAtual.tipoConteudo ?? 'texto') !== 'texto') {
-            return;
-        }
-
-        const textarea = areaTextoRef.current;
-        const textoAtual = etapaAtual.texto ?? '';
-        const inicio = textarea?.selectionStart ?? textoAtual.length;
-        const fim = textarea?.selectionEnd ?? inicio;
-        const texto = `${textoAtual.slice(0, inicio)}${variavel}${textoAtual.slice(fim)}`;
-
-        alterarEtapa(etapaSelecionada, 'texto', texto);
-        requestAnimationFrame(() => {
-            textarea?.focus();
-            textarea?.setSelectionRange(inicio + variavel.length, inicio + variavel.length);
-        });
-    };
-
-    const alterarTipoEtapa = (indice, tipoConteudo) => {
-        if (!suportaMidia && tipoConteudo !== 'texto') {
-            return;
-        }
-
-        setEtapas((etapasAtuais) => etapasAtuais.map((etapa, posicao) => {
-            if (posicao !== indice || etapa.tipo === 'condicao_horario') {
-                return etapa;
-            }
-
-            if ((etapa.tipoConteudo ?? 'texto') === tipoConteudo) {
-                return etapa;
-            }
-
-            const tinhaAnexo = Boolean(etapa.arquivo || etapa.anexo?.existente);
-
-            return {
-                ...etapa,
-                tipoConteudo,
-                arquivo: null,
-                anexo: null,
-                anexoLocalId: null,
-                removerAnexo: tinhaAnexo ? true : etapa.removerAnexo,
-            };
-        }));
-        setErros((errosAtuais) => ({
-            ...errosAtuais,
-            [`etapas.${indice}.anexo`]: null,
-            [`etapas.${indice}.tipo_conteudo`]: null,
-            [`etapas.${indice}.texto`]: null,
-        }));
-        marcarAlteracao();
-    };
-
-    const selecionarAnexo = (indice, ficheiro) => {
-        if (!ficheiro) {
-            return;
-        }
-
-        setEtapas((etapasAtuais) => etapasAtuais.map((etapa, posicao) => (
-            posicao === indice
-                ? {
-                    ...etapa,
-                    arquivo: ficheiro,
-                    anexo: {
-                        existente: false,
-                        nome: ficheiro.name,
-                        tamanho: ficheiro.size,
-                        formato: ficheiro.type || null,
-                        url: null,
-                    },
-                    anexoLocalId: `${Date.now()}-${Math.random()}`,
-                    removerAnexo: false,
-                }
-                : etapa
-        )));
-        setErros((errosAtuais) => ({ ...errosAtuais, [`etapas.${indice}.anexo`]: null }));
-        marcarAlteracao();
-    };
-
-    const removerAnexo = (indice) => {
-        setEtapas((etapasAtuais) => etapasAtuais.map((etapa, posicao) => {
-            if (posicao !== indice) {
-                return etapa;
-            }
-
-            return {
-                ...etapa,
-                tipoConteudo: 'texto',
-                arquivo: null,
-                anexo: null,
-                anexoLocalId: null,
-                removerAnexo: Boolean(etapa.anexo?.existente || etapa.removerAnexo),
-            };
-        }));
-        setErros((errosAtuais) => ({ ...errosAtuais, [`etapas.${indice}.anexo`]: null }));
-        marcarAlteracao();
-    };
-
-    const salvar = (evento) => {
-        evento.preventDefault();
-        const nomeValido = nome.trim();
-
-        if (!nomeValido) {
-            setErros({ nome: 'Informe um nome para o fluxo.' });
-            setEstadoGravacao('erro');
-            return;
-        }
-
-        if (criando && etapas.length === 0) {
-            setErros({ etapas: 'Adiciona pelo menos uma etapa antes de criar o fluxo.' });
-            setEstadoGravacao('erro');
-            return;
-        }
-
-        const erroMidia = validarMidiaDasEtapas(etapas, suportaMidia);
-        if (erroMidia) {
-            setEtapaSelecionada(erroMidia.indice);
-            setErros({ [erroMidia.campo]: erroMidia.mensagem });
-            setEstadoGravacao('erro');
-            return;
-        }
-
-        const erroCondicao = validarCondicoesDasEtapas(etapas);
-        if (erroCondicao) {
-            setEtapaSelecionada(erroCondicao.indice);
-            setErros({ [erroCondicao.campo]: erroCondicao.mensagem });
-            setEstadoGravacao('erro');
-            return;
-        }
-
-        const pausaInvalida = pausasAtivas.findIndex((habilitada, indice) => (
-            habilitada
-            && etapas[indice]?.tipo !== 'condicao_horario'
-            && !etapas[indice]?.encerra_apos
-            && indice < etapas.length - 1
-            && Number(etapas[indice].pausa_segundos) <= 0
-        ));
-        if (pausaInvalida !== -1) {
-            setEtapaSelecionada(pausaInvalida);
-            setErros({ [`etapas.${pausaInvalida}.pausa_segundos`]: 'Informe uma pausa maior que zero.' });
-            setEstadoGravacao('erro');
-            return;
-        }
-
-        const indicadorInvalido = etapas.findIndex((etapa) => {
-            if (!etapa.indicador_digitacao_ativo) {
-                return false;
-            }
-
-            const segundos = Number(etapa.indicador_digitacao_segundos);
-
-            return !Number.isFinite(segundos)
-                || segundos < 1
-                || segundos > INDICADOR_DIGITACAO_MAXIMO_SEGUNDOS;
-        });
-        if (indicadorInvalido !== -1) {
-            setEtapaSelecionada(indicadorInvalido);
-            setErros({
-                [`etapas.${indicadorInvalido}.indicador_digitacao_segundos`]:
-                    `Informe uma duração entre 1 e ${INDICADOR_DIGITACAO_MAXIMO_SEGUNDOS} segundos.`,
-            });
-            setEstadoGravacao('erro');
-            return;
-        }
-
-        if (horario.ativo && (!horario.inicio || !horario.fim)) {
-            setErros({ horario: 'Define a hora inicial e a hora final do horário permitido.' });
-            setEstadoGravacao('erro');
-            return;
-        }
-
-        if (horario.ativo && horario.inicio === horario.fim) {
-            setErros({ horario: 'A hora inicial e a hora final devem ser diferentes.' });
-            setEstadoGravacao('erro');
-            return;
-        }
-
-        setErros({});
-        const dados = {
-            nome: nomeValido,
-            ativo,
-            etapas: etapas.map((etapa, indice) => ({
-                ...(!criando ? { id: etapa.id ?? null } : {}),
-                tipo: etapa.tipo,
-                tipo_conteudo: etapa.tipo === 'condicao_horario' ? 'texto' : (etapa.tipoConteudo ?? 'texto'),
-                texto: etapa.tipo === 'condicao_horario'
-                    ? ''
-                    : (etapa.tipoConteudo === 'texto' ? etapa.texto : ''),
-                anexo: etapa.tipo !== 'condicao_horario' ? (etapa.arquivo ?? null) : null,
-                remover_anexo: etapa.tipo !== 'condicao_horario' && Boolean(etapa.removerAnexo),
-                pausa_segundos: etapa.tipo !== 'condicao_horario'
-                    && !etapa.encerra_apos
-                    && pausasAtivas[indice]
-                    ? Math.round(Number(etapa.pausa_segundos)) || 0
-                    : 0,
-                indicador_digitacao_ativo: etapa.tipo !== 'condicao_horario'
-                    && Boolean(etapa.indicador_digitacao_ativo),
-                indicador_digitacao_segundos: segundosIndicadorValidos(etapa.indicador_digitacao_segundos),
-                condicoes: etapa.tipo === 'condicao_horario'
-                    ? (etapa.condicoes ?? []).map((condicao) => ({
-                        inicio: condicao.inicio,
-                        fim: condicao.fim,
-                        destino_ordem: Number(condicao.destino_ordem),
-                    }))
-                    : [],
-                destino_nao_ordem: etapa.tipo === 'condicao_horario'
-                    ? normalizarDestino(etapa.destino_nao_ordem)
-                    : null,
-                encerra_apos: etapa.tipo !== 'condicao_horario' && Boolean(etapa.encerra_apos),
-            })),
-            regras: Object.entries(gatilhosAtivos).map(([gatilho, ativoGatilho]) => ({
-                gatilho,
-                ativo: ativoGatilho,
-            })),
-            horario: {
-                ativo: horario.ativo,
-                inicio: horario.ativo ? horario.inicio : null,
-                fim: horario.ativo ? horario.fim : null,
-                fora_horario: horario.fora_horario,
-            },
-        };
-
-        const opcoes = {
-            preserveScroll: true,
-            forceFormData: true,
-            onStart: () => setEstadoGravacao('a_guardar'),
-            onSuccess: () => {
-                setNome(nomeValido);
-                setSincronizacaoForcada((valor) => valor + 1);
-                setEstadoGravacao('guardado');
-                toast.success(criando ? 'Fluxo criado' : 'Alterações salvas', {
-                    description: `“${nomeValido}” foi salvo no sistema.`,
-                });
-            },
-            onError: (errosRecebidos) => {
-                setErros(errosRecebidos);
-                const erroDeEtapa = Object.keys(errosRecebidos).find((campo) => campo.startsWith('etapas.'));
-                const indiceComErro = erroDeEtapa ? Number(erroDeEtapa.split('.')[1]) : -1;
-
-                if (indiceComErro >= 0 && indiceComErro < etapas.length) {
-                    setEtapaSelecionada(indiceComErro);
-                }
-
-                setEstadoGravacao('erro');
-                toast.error('Não foi possível salvar o fluxo', {
-                    description: Object.values(errosRecebidos)[0] ?? 'Verifica os campos e tenta novamente.',
-                });
-            },
-            onHttpException: () => {
-                setEstadoGravacao('erro');
-                toast.error('Não foi possível salvar o fluxo', {
-                    description: 'O servidor não confirmou a gravação.',
-                });
-            },
-            onNetworkError: () => {
-                setEstadoGravacao('erro');
-                toast.error('Não foi possível salvar o fluxo', {
-                    description: 'Verifica a ligação e tenta novamente.',
-                });
-            },
-            onFinish: () => setEstadoGravacao((estado) => (
-                estado === 'a_guardar' ? 'erro' : estado
-            )),
-        };
-
-        if (fluxo?.id) {
-            router.post(`/fluxos/${fluxo.id}`, { ...dados, _method: 'PUT' }, opcoes);
-        } else {
-            router.post('/fluxos', dados, opcoes);
-        }
-    };
-
-    const nomeGatilhosSelecionados = gatilhos
-        .filter((gatilho) => gatilhosAtivos[gatilho.valor])
-        .map((gatilho) => gatilho.rotulo);
-
-    const paineis = [
-        { valor: 'estrutura', rotulo: 'Etapas' },
-        { valor: 'editar', rotulo: 'Editar' },
-        { valor: 'contexto', rotulo: 'Prévia' },
-    ];
+    const {
+        criando,
+        nome,
+        ativo,
+        etapas,
+        gatilhosAtivos,
+        horario,
+        pausasAtivas,
+        etapaSelecionada,
+        estadoGravacao,
+        erros,
+        mensagemReordenacao,
+        etapaParaExcluir,
+        avisoSaidaAberto,
+        pausaUnidade,
+        pausaInput,
+        painelAtivo,
+        etapaAtual,
+        nomeGatilhosSelecionados,
+        areaTextoRef,
+        painelEdicaoRef,
+        setPainelAtivo,
+        alterarNome,
+        alterarAtivo,
+        selecionarEtapa,
+        selecionarEtapaAnterior,
+        selecionarEtapaSeguinte,
+        alterarEtapa,
+        alterarGatilho,
+        alterarHorario,
+        adicionarEtapa,
+        adicionarCondicao,
+        moverEtapa,
+        solicitarExclusaoEtapa,
+        fecharExclusaoEtapa,
+        confirmarExclusaoEtapa,
+        alterarCondicao,
+        adicionarCondicaoNoBloco,
+        removerCondicaoDoBloco,
+        alterarDestinoNao,
+        alternarPausa,
+        alternarIndicadorDigitacao,
+        alterarSegundosIndicador,
+        alterarUnidadePausa,
+        alterarPausaInput,
+        fecharAvisoSaida,
+        confirmarSaidaSemGuardar,
+        inserirVariavel,
+        alterarTipoEtapa,
+        selecionarAnexo,
+        removerAnexo,
+        salvar,
+    } = useEditorFluxo({ fluxo, suportaMidia, podeCondicaoHorario });
 
     return (
         <>
             <form onSubmit={salvar} className={`v2-conteudo v2-editor-fluxo v2-editor-fluxo--painel-${painelAtivo}`}>
-                <header className="v2-editor-fluxo__cabecalho">
-                    <div>
-                        <h1 className="v2-editor-fluxo__titulo">
-                            <Link href="/fluxos">Fluxos</Link>
-                            {' / '}
-                            {criando ? 'Novo fluxo' : 'Editar fluxo'}
-                        </h1>
-                        <p className="v2-descricao-pagina">
-                            Monte a sequência de mensagens e configure como este fluxo é iniciado.
-                        </p>
-                    </div>
-                    <div className="v2-editor-fluxo__cabecalho-acoes">
-                        <Link href="/fluxos" className="v2-btn v2-btn--contorno">
-                            <ArrowLeft />
-                            Voltar à central
-                        </Link>
-                    </div>
-                </header>
-
-                <section className="v2-painel v2-editor-fluxo__painel">
-                    <div className="v2-editor-fluxo__painel-corpo">
-                        <div className="v2-editor-fluxo__campo-linha v2-editor-fluxo__campo-linha--nome">
-                            <label className="v2-campo" style={{ flex: 1 }}>
-                                <span className="v2-campo__rotulo">Nome do fluxo</span>
-                                <input
-                                    type="text"
-                                    value={nome}
-                                    onChange={(evento) => alterarNome(evento.target.value)}
-                                    aria-invalid={Boolean(erros.nome)}
-                                    className="v2-entrada"
-                                />
-                                {erros.nome && <span role="alert" className="v2-campo__erro">{erros.nome}</span>}
-                            </label>
-                            <div className="v2-editor-fluxo__campo-ativo">
-                                <span className="v2-campo__rotulo" aria-hidden="true">{'\u00A0'}</span>
-                                <Interruptor
-                                    id="fluxo-ativo"
-                                    checked={ativo}
-                                    onCheckedChange={(verificado) => {
-                                        setAtivo(verificado);
-                                        marcarAlteracao();
-                                    }}
-                                    titulo="Fluxo ativo"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="v2-painel v2-editor-fluxo__painel">
-                    <div className="v2-editor-fluxo__painel-corpo">
-                        <div className="v2-editor-fluxo__secao-cabecalho">
-                            <div>
-                                <h2 className="v2-editor-fluxo__secao-titulo">Início do fluxo</h2>
-                                <p className="v2-editor-fluxo__secao-nota">Escolha os gatilhos que iniciam este fluxo automaticamente quando chega uma mensagem.</p>
-                            </div>
-                        </div>
-                        <fieldset className="v2-editor-fluxo__grupo-botoes">
-                            <legend className="v2-oculto-visual">Gatilhos que iniciam o fluxo</legend>
-                            {gatilhos.map((gatilho) => {
-                                const gatilhoAtivo = Boolean(gatilhosAtivos[gatilho.valor]);
-
-                                return (
-                                    <button
-                                        key={gatilho.valor}
-                                        type="button"
-                                        aria-pressed={gatilhoAtivo}
-                                        onClick={() => alterarGatilho(gatilho.valor)}
-                                        className="v2-editor-fluxo__botao-gatilho"
-                                    >
-                                        <span className="v2-editor-fluxo__caixa-marcacao" aria-hidden="true">
-                                            {gatilhoAtivo && <Check style={{ width: '0.75rem', height: '0.75rem' }} />}
-                                        </span>
-                                        {gatilho.rotulo}
-                                    </button>
-                                );
-                            })}
-                        </fieldset>
-                    </div>
-                </section>
-
-                <section className="v2-painel v2-editor-fluxo__painel">
-                    <div className="v2-editor-fluxo__painel-corpo">
-                        <div className="v2-editor-fluxo__secao-cabecalho">
-                            <div>
-                                <h2 className="v2-editor-fluxo__secao-titulo">Horário de início</h2>
-                                <p className="v2-editor-fluxo__secao-nota">Opcional: quando ativado, mensagens recebidas só iniciam este fluxo dentro da janela permitida.</p>
-                            </div>
-                            <Interruptor
-                                id="horario-inicio-ativo"
-                                checked={horario.ativo}
-                                onCheckedChange={(verificado) => alterarHorario('ativo', verificado)}
-                                titulo="Ativar horário"
-                            />
-                        </div>
-
-                        {horario.ativo && (
-                            <div className="v2-editor-fluxo__grupo">
-                                <div className="v2-editor-fluxo__condicao-campos v2-editor-fluxo__condicao-campos--duas">
-                                    <label className="v2-campo">
-                                        <span className="v2-campo__rotulo">Início permitido</span>
-                                        <input
-                                            type="time"
-                                            step={60}
-                                            value={horario.inicio}
-                                            onChange={(evento) => alterarHorario('inicio', evento.target.value)}
-                                            aria-invalid={Boolean(erros.horario)}
-                                            className="v2-entrada v2-numerico"
-                                        />
-                                    </label>
-                                    <label className="v2-campo">
-                                        <span className="v2-campo__rotulo">Fim permitido</span>
-                                        <input
-                                            type="time"
-                                            step={60}
-                                            value={horario.fim}
-                                            onChange={(evento) => alterarHorario('fim', evento.target.value)}
-                                            aria-invalid={Boolean(erros.horario)}
-                                            className="v2-entrada v2-numerico"
-                                        />
-                                    </label>
-                                </div>
-                                <p className="v2-campo__ajuda">
-                                    Formato de 24 horas, com limites inclusivos. Suporta janelas que atravessam a meia-noite (ex.: 22:00 às 06:00).
-                                </p>
-                                <fieldset className="v2-campo">
-                                    <legend className="v2-campo__rotulo">Quando uma mensagem chega fora do horário</legend>
-                                    <div className="v2-editor-fluxo__condicao-campos v2-editor-fluxo__condicao-campos--duas">
-                                        {[
-                                            { valor: 'nao_iniciar', rotulo: 'Não iniciar', descricao: 'A mensagem fora do horário não inicia o fluxo; uma nova mensagem dentro do horário permitido poderá iniciá-lo.' },
-                                            { valor: 'aguardar', rotulo: 'Aguardar próximo horário', descricao: 'Registra um agendamento e inicia o fluxo na próxima janela permitida, sem exigir uma nova mensagem.' },
-                                        ].map((opcao) => {
-                                            const selecionada = horario.fora_horario === opcao.valor;
-
-                                            return (
-                                                <button
-                                                    key={opcao.valor}
-                                                    type="button"
-                                                    aria-pressed={selecionada}
-                                                    onClick={() => alterarHorario('fora_horario', opcao.valor)}
-                                                    className="v2-editor-fluxo__botao-opcao"
-                                                >
-                                                    <span className="v2-editor-fluxo__botao-opcao-titulo">
-                                                        <span className="v2-editor-fluxo__caixa-marcacao" aria-hidden="true">
-                                                            {selecionada && <span className="v2-oculto-visual">Selecionado</span>}
-                                                        </span>
-                                                        {opcao.rotulo}
-                                                    </span>
-                                                    <span className="v2-editor-fluxo__botao-opcao-descricao">{opcao.descricao}</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </fieldset>
-                            </div>
-                        )}
-
-                        {erros.horario && (
-                            <p role="alert" className="v2-campo__erro">{erros.horario}</p>
-                        )}
-                    </div>
-                </section>
+                <CabecalhoEditor
+                    criando={criando}
+                    nome={nome}
+                    erros={erros}
+                    aoAlterarNome={alterarNome}
+                    ativo={ativo}
+                    aoAlternarAtivo={alterarAtivo}
+                    gatilhosAtivos={gatilhosAtivos}
+                    aoAlterarGatilho={alterarGatilho}
+                    horario={horario}
+                    aoAlterarHorario={alterarHorario}
+                />
 
                 <div className="v2-editor-fluxo__seletor-painel">
                     <span className="v2-campo__rotulo">Painel visível</span>
@@ -973,128 +108,64 @@ export default function EditorFluxoV2({
                 </div>
 
                 <div className="v2-editor-fluxo__grade">
-                    <div className="v2-editor-fluxo__coluna v2-editor-fluxo__coluna--estrutura">
-                        <ListaEtapas
-                            etapas={etapas}
-                            etapaSelecionada={etapaSelecionada}
-                            erros={erros}
-                            podeCondicaoHorario={podeCondicaoHorario}
-                            suportaCondicaoHorario={suportaCondicaoHorario}
-                            aoSelecionar={selecionarEtapa}
-                            aoAdicionarEtapa={adicionarEtapa}
-                            aoAdicionarCondicao={adicionarCondicao}
-                            aoMoverEtapa={moverEtapa}
-                            mensagemReordenacao={mensagemReordenacao}
-                        />
-                    </div>
+                    <PainelEtapasEditor
+                        etapas={etapas}
+                        etapaSelecionada={etapaSelecionada}
+                        etapaAtual={etapaAtual}
+                        erros={erros}
+                        podeCondicaoHorario={podeCondicaoHorario}
+                        suportaCondicaoHorario={suportaCondicaoHorario}
+                        suportaMidia={suportaMidia}
+                        suportaIndicadorDigitacao={suportaIndicadorDigitacao}
+                        fusoConta={fusoConta}
+                        pausasAtivas={pausasAtivas}
+                        pausaUnidade={pausaUnidade}
+                        pausaInput={pausaInput}
+                        mensagemReordenacao={mensagemReordenacao}
+                        painelEdicaoRef={painelEdicaoRef}
+                        areaTextoRef={areaTextoRef}
+                        aoSelecionarEtapa={selecionarEtapa}
+                        aoAdicionarEtapa={adicionarEtapa}
+                        aoAdicionarCondicao={adicionarCondicao}
+                        aoMoverEtapa={moverEtapa}
+                        aoAlterarEtapa={alterarEtapa}
+                        aoAlterarCondicao={alterarCondicao}
+                        aoAdicionarCondicaoNoBloco={adicionarCondicaoNoBloco}
+                        aoRemoverCondicaoDoBloco={removerCondicaoDoBloco}
+                        aoAlterarDestinoNao={alterarDestinoNao}
+                        aoAlterarTipoEtapa={alterarTipoEtapa}
+                        aoSelecionarAnexo={selecionarAnexo}
+                        aoRemoverAnexo={removerAnexo}
+                        aoInserirVariavel={inserirVariavel}
+                        aoAlternarIndicadorDigitacao={alternarIndicadorDigitacao}
+                        aoAlterarSegundosIndicador={alterarSegundosIndicador}
+                        aoAlternarPausa={alternarPausa}
+                        aoAlterarPausaInput={alterarPausaInput}
+                        aoAlterarUnidadePausa={alterarUnidadePausa}
+                        aoVoltarEtapa={selecionarEtapaAnterior}
+                        aoAvancarEtapa={selecionarEtapaSeguinte}
+                        aoSolicitarExclusao={solicitarExclusaoEtapa}
+                    />
 
-                    <div className="v2-editor-fluxo__coluna v2-editor-fluxo__coluna--editar">
-                        <section className="v2-painel v2-editor-fluxo__painel" aria-label="Edição da etapa">
-                            {etapaAtual ? (
-                                <div
-                                    id="painel-etapa"
-                                    ref={painelEdicaoRef}
-                                    tabIndex={-1}
-                                    role="region"
-                                    aria-labelledby={`seletor-etapa-${etapaSelecionada}`}
-                                    className="v2-editor-fluxo__painel-corpo"
-                                >
-                                    {etapaAtual.tipo === 'condicao_horario' ? (
-                                        <EditorCondicaoHorario
-                                            etapa={etapaAtual}
-                                            indice={etapaSelecionada}
-                                            etapas={etapas}
-                                            erros={erros}
-                                            fusoConta={fusoConta}
-                                            aoAlterarCondicao={alterarCondicao}
-                                            aoAdicionarCondicao={adicionarCondicaoNoBloco}
-                                            aoRemoverCondicao={removerCondicaoDoBloco}
-                                            aoAlterarDestinoNao={(indice, valor) => alterarEtapa(indice, 'destino_nao_ordem', normalizarDestino(valor))}
-                                            aoSolicitarExclusao={setEtapaParaExcluir}
-                                        />
-                                    ) : (
-                                        <EditorEtapa
-                                            etapa={etapaAtual}
-                                            indice={etapaSelecionada}
-                                            total={etapas.length}
-                                            etapas={etapas}
-                                            erros={erros}
-                                            suportaMidia={suportaMidia}
-                                            suportaIndicadorDigitacao={suportaIndicadorDigitacao}
-                                            suportaCondicaoHorario={suportaCondicaoHorario}
-                                            pausasAtivas={pausasAtivas}
-                                            pausaUnidade={pausaUnidade}
-                                            pausaInput={pausaInput}
-                                            areaTextoRef={areaTextoRef}
-                                            aoAlterarEtapa={alterarEtapa}
-                                            aoAlterarTipoEtapa={alterarTipoEtapa}
-                                            aoSelecionarAnexo={selecionarAnexo}
-                                            aoRemoverAnexo={removerAnexo}
-                                            aoInserirVariavel={inserirVariavel}
-                                            aoAlternarIndicadorDigitacao={alternarIndicadorDigitacao}
-                                            aoAlterarSegundosIndicador={alterarSegundosIndicador}
-                                            aoAlternarPausa={alternarPausa}
-                                            aoAlterarPausaInput={alterarPausaInput}
-                                            aoAlterarUnidadePausa={alterarUnidadePausa}
-                                            aoVoltar={() => setEtapaSelecionada((i) => Math.max(0, i - 1))}
-                                            aoAvancar={() => setEtapaSelecionada((i) => Math.min(etapas.length - 1, i + 1))}
-                                            aoSolicitarExclusao={setEtapaParaExcluir}
-                                        />
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="v2-vazio">
-                                    <p className="v2-vazio__titulo">Ainda não há etapas</p>
-                                    <p className="v2-vazio__texto">Adicione uma etapa para começar a editar o conteúdo.</p>
-                                    <button type="button" className="v2-btn v2-btn--contorno" onClick={adicionarEtapa}>
-                                        Adicionar etapa
-                                    </button>
-                                </div>
-                            )}
-                        </section>
-                    </div>
-
-                    <div className="v2-editor-fluxo__coluna v2-editor-fluxo__coluna--contexto">
-                        <div className="v2-editor-fluxo__grupo">
-                            <PreviaMensagem
-                                etapa={etapaAtual}
-                                indice={etapaSelecionada}
-                                total={etapas.length}
-                                etapas={etapas}
-                            />
-                            <ResumoFluxo
-                                nome={nome}
-                                gatilhosAtivos={nomeGatilhosSelecionados}
-                                etapas={etapas}
-                                pausasAtivas={pausasAtivas}
-                                horario={horario}
-                                estadoGravacao={estadoGravacao}
-                            />
-                        </div>
-                    </div>
+                    <PainelPreviaEditor
+                        etapaAtual={etapaAtual}
+                        etapaSelecionada={etapaSelecionada}
+                        etapas={etapas}
+                        nome={nome}
+                        gatilhosSelecionados={nomeGatilhosSelecionados}
+                        pausasAtivas={pausasAtivas}
+                        horario={horario}
+                        estadoGravacao={estadoGravacao}
+                    />
                 </div>
 
-                <footer className="v2-editor-fluxo__rodape">
-                    <div className="v2-editor-fluxo__estado">
-                        {estadoGravacao === 'a_guardar' && <LoaderCircle className="v2-editor-fluxo__spinner" />}
-                        {estadoGravacao === 'guardado' && <CheckCircle2 style={{ width: '1rem', height: '1rem', color: 'var(--v2-verde)' }} />}
-                        {estadoGravacao === 'alterado' && <CircleDot style={{ width: '1rem', height: '1rem', color: 'var(--v2-ink-2)' }} />}
-                        {estadoGravacao === 'erro' && <X style={{ width: '1rem', height: '1rem', color: 'var(--v2-perigo)' }} />}
-                        <span className={estadoGravacao === 'erro' ? 'v2-editor-fluxo__estado--erro' : ''}>
-                            {estadoGravacao === 'guardado' ? 'Salvo com sucesso' : estadoGravacao === 'a_guardar' ? 'Salvando…' : estadoGravacao === 'erro' ? 'Revise os campos antes de salvar' : 'Alterações não salvas'}
-                        </span>
-                    </div>
-                    <button type="submit" disabled={estadoGravacao === 'a_guardar'} className="v2-btn v2-btn--primario">
-                        {estadoGravacao === 'a_guardar' && <LoaderCircle className="v2-editor-fluxo__spinner" />}
-                        {estadoGravacao === 'a_guardar' ? 'Salvando…' : criando ? 'Criar fluxo' : 'Salvar alterações'}
-                    </button>
-                </footer>
+                <BarraAcoesEditor estadoGravacao={estadoGravacao} criando={criando} />
             </form>
 
             <DialogoExcluirEtapa
                 aberto={etapaParaExcluir !== null}
                 etapaParaExcluir={etapaParaExcluir}
-                aoFechar={() => setEtapaParaExcluir(null)}
+                aoFechar={fecharExclusaoEtapa}
                 aoConfirmar={confirmarExclusaoEtapa}
             />
 

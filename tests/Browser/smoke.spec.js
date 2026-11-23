@@ -38,6 +38,24 @@ test('editor de fluxo abre', async ({ page }) => {
     await expect(page.getByText('Novo fluxo').first()).toBeVisible();
 });
 
+test('editor avisa ao sair com alteracoes nao salvas', async ({ page }) => {
+    await page.goto('/fluxos/criar');
+    await page.getByLabel('Nome do fluxo').fill('Rascunho nao salvo');
+    await page.getByRole('link', { name: 'Voltar à central' }).click();
+
+    await expect(page).toHaveURL(/\/fluxos\/criar$/);
+    const dialogo = page.getByRole('dialog');
+    await expect(dialogo.getByText('Alterações não salvas?')).toBeVisible();
+
+    await dialogo.getByRole('button', { name: 'Continuar a editar' }).click();
+    await expect(dialogo).toBeHidden();
+    await expect(page.getByLabel('Nome do fluxo')).toHaveValue('Rascunho nao salvo');
+
+    await page.getByRole('link', { name: 'Voltar à central' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Sair sem salvar' }).click();
+    await page.waitForURL(/\/fluxos$/, { timeout: 15_000 });
+});
+
 test('conversa abre a ficha do contato', async ({ page }) => {
     await page.goto('/conversas');
     await page.getByRole('button', { name: 'Abrir primeira conversa' }).click();
