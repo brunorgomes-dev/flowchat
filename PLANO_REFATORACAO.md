@@ -1,10 +1,10 @@
 # Plano de refatoração do FlowChat
 
-> **Status:** execução em andamento — Fase 3 (frontend). Atualizado em 23/11/2026.
+> **Status:** Fases 0–3 concluídas; refatoração planejada encerrada. Atualizado em 23/11/2026.
 >
 > **Baseline original:** commit `d0c2613` (18/11/2026). Os números da seção 2 são uma fotografia histórica, não o estado atual.
 >
-> **Estado atual:** branch `refactor/fase-3-frontend`; limpeza CSS concluída em commit próprio. `LEMBRETES.md` é arquivo local ignorado pelo Git e recebeu as triagens desta retomada. Tags `checkpoint/fase-0`, `checkpoint/fase-1` e `checkpoint/fase-2` existem; Fase 3 ainda sem tag.
+> **Estado atual:** branch `refactor/fase-3-frontend`; fases 0, 1, 2 e 3 tagueadas (`checkpoint/fase-0` a `checkpoint/fase-3`). A limpeza CSS ficou em commit próprio. As triagens pós-auditoria estão em `LEMBRETES.md`.
 >
 > **Objetivo:** reduzir complexidade e duplicação sem mudar comportamento, com cada fase reversível e verificável isoladamente.
 
@@ -29,7 +29,7 @@
 | 0 | Concluída e tagueada | `checkpoint/fase-0` existe. Consulte os commits da fase para os gates executados. |
 | 1 | Concluída e tagueada | `checkpoint/fase-1` existe. |
 | 2 | Concluída e tagueada | `checkpoint/fase-2` existe. |
-| 3 | Fechamento pendente | Retomada em 23/11: PHP 154/154 (1.007 asserções), Pint, Vitest 19/19 e Playwright 14/14 aprovados. `npm run lint` encerrou com 0 erros e 9 warnings; build passou. CSS órfão removido em `d34995d`. Audit final registrado; comparação histórica depende de localizar o audit inicial, ausente nos artefatos pesquisados. |
+| 3 | Concluída e tagueada | Tag `checkpoint/fase-3`. PHP 154/154 (1.007 asserções), Pint, Vitest 19/19, Playwright 14/14, verificação de console e build passaram. ESLint encerrou com 0 erros e 9 warnings; CSS órfão removido em `d34995d`. Audit inicial não localizado; audit final preservado como primeira referência em `relatorios/2026-11-23-auditoria-ponytail-fase-3.md`. |
 
 **Ponto de retomada:** revisão Ponytail por página concluída para as páginas refatoradas. Foram comparadas 32 capturas claras e 20 escuras pixel a pixel com o baseline existente (todas idênticas); também foram inspecionadas as oito rotas em quatro tamanhos. O CSS órfão foi removido em commit separado. Capturas e comparações temporárias: `%LOCALAPPDATA%\Temp\opencode\refatoracao` (baselines e recortes) e `%LOCALAPPDATA%\Temp\flowchat-visual-pos-css` (64 capturas atuais); são artefatos locais fora do repositório. Permanecem três itens de experiência em Conversas/Contas, preexistentes e registrados em `LEMBRETES.md`, além do fechamento da auditoria final.
 
@@ -1108,7 +1108,7 @@ Interromper a fase imediatamente se:
 
 As Fases 0, 1 e 2 têm tags de checkpoint no repositório. Os checklists abaixo acompanham apenas o fechamento ainda pendente da Fase 3; os gates históricos devem ser consultados nos commits/artefatos das respectivas fases, sem inferir que cada item histórico foi revalidado hoje.
 
-### Fase 3 — fechamento pendente
+### Fase 3 — concluída (`checkpoint/fase-3`)
 
 - [x] Vitest para funções puras (`tests/js/editor/util.test.js`)
 - [x] Extrações de Editor, Conversas, Fluxos e Agendamentos presentes na branch
