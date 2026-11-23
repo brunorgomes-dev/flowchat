@@ -38,11 +38,11 @@ Não encontrei `Must fix` novo que impeça a Fase 3. Os itens abaixo têm cenár
    - **Correção mínima:** Limitar o lote e reservar os itens de forma atômica ou tornar o job único.
    - **Se ficar assim:** O backlog pode crescer mais rápido que a capacidade do worker.
 
-5. **Duas contas podem conectar a mesma Página em uma corrida** (`app/Http/Controllers/ConectarMessengerController.php:201-205`; `app/Http/Controllers/WebhookMessengerController.php:48`)
-   - **O que é:** A seleção consulta se a Página já pertence a outra conta e depois grava a integração.
-   - **Problema:** Duas seleções concorrentes podem passar pela consulta antes que qualquer uma grave. O webhook então resolve a Página pela primeira linha encontrada.
-   - **Correção mínima:** Garantir unicidade de `page_id` no banco após conferir duplicatas existentes e tratar a violação na seleção.
-   - **Se ficar assim:** Eventos dessa Página podem ser associados à conta errada.
+5. **Conexões OAuth simultâneas podem terminar em erro** (`app/Http/Controllers/ConectarMessengerController.php:201-235`; `database/migrations/2026_11_09_121141_criar_tabela_integracoes_messenger.php:17`)
+   - **O que é:** A seleção consulta se a Página já está ligada a outra conta antes de chamar a Meta e gravar a integração.
+   - **Problema:** Duas contas podem passar pela consulta simultaneamente. A restrição única existente em `page_id` impede associação duplicada, mas a segunda gravação pode falhar sem tratamento depois da inscrição do app na Meta.
+   - **Correção mínima:** Tratar a violação de unicidade como conflito de seleção e exibir mensagem clara. Não adicionar outra migration de unicidade; ela já existe. Não remover a inscrição Meta do vencedor da corrida.
+   - **Se ficar assim:** Uma tentativa concorrente pode terminar em erro interno e confundir quem conecta; a restrição do banco impede o roteamento para a conta errada.
 
 ### Nice to have
 

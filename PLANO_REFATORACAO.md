@@ -18,9 +18,8 @@
 | **1** | Remoção do legado e do preview (~9.700 linhas) | Baixo | 1–2 dias |
 | **2** | Reestruturação do backend (controllers/jobs → requests e actions) | Médio | 5–8 dias |
 | **3** | Refatoração do frontend V2 (páginas grandes, hooks, CSS) | Alto | 10–15 dias |
-| **4** | Produto (versionamento de execução, fluxo por anúncio, concorrência) | — | Fora de escopo |
 
-**Regra de ouro:** nenhuma fase começa antes da anterior estar verde, tagueada e com rollback conhecido.
+**Regra de ouro:** cada fase começa após a anterior estar verde, tagueada e com rollback conhecido. Este plano encerra na Fase 3; evolução posterior fica em documento separado.
 
 ### Estado da execução em 23/11/2026
 
@@ -31,7 +30,7 @@
 | 2 | Concluída e tagueada | `checkpoint/fase-2` existe. |
 | 3 | Concluída e tagueada | Tag `checkpoint/fase-3`. PHP 154/154 (1.007 asserções), Pint, Vitest 19/19, Playwright 14/14, verificação de console e build passaram. ESLint encerrou com 0 erros e 9 warnings; CSS órfão removido em `d34995d`. Audit inicial não localizado; audit final preservado como primeira referência em `relatorios/2026-11-23-auditoria-ponytail-fase-3.md`. |
 
-**Ponto de retomada:** revisão Ponytail por página concluída para as páginas refatoradas. Foram comparadas 32 capturas claras e 20 escuras pixel a pixel com o baseline existente (todas idênticas); também foram inspecionadas as oito rotas em quatro tamanhos. O CSS órfão foi removido em commit separado. Capturas e comparações temporárias: `%LOCALAPPDATA%\Temp\opencode\refatoracao` (baselines e recortes) e `%LOCALAPPDATA%\Temp\flowchat-visual-pos-css` (64 capturas atuais); são artefatos locais fora do repositório. Permanecem três itens de experiência em Conversas/Contas, preexistentes e registrados em `LEMBRETES.md`, além do fechamento da auditoria final.
+**Fechamento:** revisão Ponytail por página concluída para as páginas refatoradas. Foram comparadas 32 capturas claras e 20 escuras pixel a pixel com o baseline existente (todas idênticas); também foram inspecionadas oito rotas em quatro tamanhos. O CSS órfão foi removido em commit separado. Capturas e comparações temporárias: `%LOCALAPPDATA%\Temp\opencode\refatoracao` (baselines e recortes) e `%LOCALAPPDATA%\Temp\flowchat-visual-pos-css` (64 capturas atuais); são artefatos locais fora do repositório. Pendências de produto e confiabilidade permanecem no lembrete e no plano pós-refatoração.
 
 **Achado da revisão — `Should fix`:** em `resources/js/Pages/V2/AdminContas.jsx`, os cards “Ativas” e “Suspensas” contam apenas `contas.data`, mas a lista é paginada com 15 itens. Quando há mais de 15 contas, esses rótulos parecem totais gerais e mostram contagens incompletas. Correção mínima: rotular como “Ativas nesta página” e “Suspensas nesta página”, ou fornecer totais globais do servidor. De acordo com a regra 1.5, não incluir essa correção de cópia no commit de refatoração; triá-la em alteração separada.
 
@@ -241,7 +240,7 @@ jobs:
       - run: npm run build
 ```
 
-**Por que não sobe MySQL:** `phpunit.xml` força `DB_CONNECTION=sqlite` e `DB_DATABASE=:memory:`. Os testes atuais são compatíveis. Um job MySQL separado fica para a Fase 4 (concorrência real).
+**Por que não sobe MySQL:** `phpunit.xml` força `DB_CONNECTION=sqlite` e `DB_DATABASE=:memory:`. Os testes atuais são compatíveis. A validação de concorrência com MySQL será especificada no [plano pós-refatoração](PLANO_POS_REFATORACAO.md).
 
 #### 0.3 — Lint do frontend (requer D1 = a)
 
@@ -996,14 +995,9 @@ Cada página refatorada é um conjunto de commits independentes. Reverter a pág
 
 ---
 
-## 7. FASE 4 — Fora de escopo (produto)
+## 7. Encerramento da refatoração
 
-Não faz parte desta refatoração. Exige especificação e autorização próprias:
-
-- **Versionamento de fluxo em execução** — snapshot das etapas por execução; migration nova.
-- **Fluxo por anúncio/campanha** — novo gatilho e vínculo com `origens_contato.ad_id`.
-- **Concorrência real do webhook em MySQL** — lock/unique constraints e teste com dois workers.
-- **Cobrança, múltiplos usuários por conta, relatórios e IA** — somente após validação com clientes reais.
+As Fases 0–3 foram concluídas e receberam as tags `checkpoint/fase-0` a `checkpoint/fase-3`. Este plano mantém o histórico, as decisões e os gates dessa refatoração; não inclui novas funcionalidades nem a evolução técnica posterior. Os próximos trabalhos aprovados estão especificados em [PLANO_POS_REFATORACAO.md](PLANO_POS_REFATORACAO.md).
 
 ---
 
@@ -1106,7 +1100,7 @@ Interromper a fase imediatamente se:
 
 ## 11. Checklist mestre
 
-As Fases 0, 1 e 2 têm tags de checkpoint no repositório. Os checklists abaixo acompanham apenas o fechamento ainda pendente da Fase 3; os gates históricos devem ser consultados nos commits/artefatos das respectivas fases, sem inferir que cada item histórico foi revalidado hoje.
+As Fases 0–3 estão concluídas e tagueadas. Este checklist registra o fechamento da Fase 3; os gates das Fases 0–2 são históricos e devem ser consultados nos commits/artefatos correspondentes, sem inferir que foram revalidados nesta retomada.
 
 ### Fase 3 — concluída (`checkpoint/fase-3`)
 
