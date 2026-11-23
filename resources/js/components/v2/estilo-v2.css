@@ -160,17 +160,6 @@
     border-bottom: 1px solid var(--v2-rail-line);
 }
 
-.v2-rail__marca-simbolo {
-    display: flex;
-    width: 2.25rem;
-    height: 2.25rem;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    background: var(--v2-terracota);
-    color: #fff9f6;
-}
-
 .v2-rail__marca-nome {
     font-size: 0.9375rem;
     font-weight: 600;
@@ -301,43 +290,6 @@
     align-items: center;
     gap: 0.5rem;
     margin-left: auto;
-}
-
-.v2-navegacao-movel {
-    display: flex;
-    gap: 0.25rem;
-    overflow-x: auto;
-    padding: 0.5rem 1rem;
-    border-bottom: 1px solid var(--v2-line);
-    background: var(--v2-surface);
-    scrollbar-width: none;
-    overscroll-behavior-x: contain;
-}
-
-.v2-navegacao-movel::-webkit-scrollbar {
-    display: none;
-}
-
-@media (min-width: 1024px) {
-    .v2-navegacao-movel {
-        display: none;
-    }
-}
-
-.v2-navegacao-movel a {
-    flex: none;
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--v2-line);
-    color: var(--v2-ink-2);
-    font-size: 0.75rem;
-    text-decoration: none;
-    white-space: nowrap;
-}
-
-.v2-navegacao-movel a[aria-current='page'] {
-    border-color: var(--v2-primario);
-    color: var(--v2-primario);
-    font-weight: 500;
 }
 
 .v2-conteudo {
@@ -823,10 +775,6 @@ textarea.v2-entrada {
 
 .v2-painel__corpo {
     padding: 0.875rem;
-}
-
-.v2-painel__corpo--sem-espaco {
-    padding: 0;
 }
 
 .v2-barra {
@@ -1436,127 +1384,6 @@ textarea.v2-entrada {
     color: var(--v2-ink-2);
 }
 
-/* ---------- Fluxos e etapas ---------- */
-
-.v2-etapas {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    border-left: 1px solid var(--v2-line);
-}
-
-.v2-etapa {
-    position: relative;
-    display: flex;
-    gap: 0.625rem;
-    width: 100%;
-    padding: 0.5625rem 0.625rem 0.5625rem 0.875rem;
-    border: 0;
-    border-bottom: 1px solid var(--v2-line);
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.v2-etapa:hover {
-    background: var(--v2-surface-2);
-}
-
-.v2-etapa[aria-current='true'] {
-    background: color-mix(in oklab, var(--v2-terracota) 8%, var(--v2-surface));
-}
-
-.v2-etapa[aria-current='true']::before {
-    content: '';
-    position: absolute;
-    left: -1px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--v2-terracota);
-}
-
-.v2-etapa__numero {
-    flex: none;
-    min-width: 1.25rem;
-    color: var(--v2-ink-3);
-    font-size: 0.6875rem;
-    font-variant-numeric: tabular-nums;
-}
-
-.v2-etapa__titulo {
-    display: block;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    line-height: 1.4;
-}
-
-.v2-etapa__meta {
-    display: block;
-    margin-top: 0.0625rem;
-    color: var(--v2-ink-2);
-    font-size: 0.6875rem;
-    line-height: 1.45;
-}
-
-.v2-editor {
-    display: grid;
-    gap: 1.25rem;
-}
-
-@media (min-width: 1400px) {
-    .v2-editor {
-        grid-template-columns: 17rem minmax(0, 1fr) 19rem;
-        align-items: start;
-    }
-}
-
-.v2-barra-fixa {
-    position: sticky;
-    bottom: 0;
-    z-index: 20;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-    padding: 0.625rem 0.875rem;
-    border: 1px solid var(--v2-line-forte);
-    background: var(--v2-surface);
-    box-shadow: 0 -8px 24px -20px rgb(33 28 24 / 55%);
-}
-
-/* Prévia de mensagem */
-.v2-previa {
-    border: 1px solid var(--v2-line);
-    background: var(--v2-surface);
-}
-
-.v2-previa__topo {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid var(--v2-line);
-    background: var(--v2-surface-2);
-    font-size: 0.6875rem;
-    color: var(--v2-ink-2);
-}
-
-.v2-previa__corpo {
-    display: flex;
-    min-height: 12rem;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background:
-        linear-gradient(var(--v2-canvas), var(--v2-canvas)) padding-box,
-        repeating-linear-gradient(0deg, transparent, transparent 23px, var(--v2-line) 23px, var(--v2-line) 24px);
-}
-
 /* ---------- Diálogo ---------- */
 
 .v2-dialogo {
@@ -1702,11 +1529,6 @@ textarea.v2-entrada {
     border: 0;
 }
 
-.v2-rolagem-x {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-}
-
 /* Exibição controlada pelo preview, no fim da folha para vencer .v2-btn.
    Utilitários de display do Tailwind perdem para as classes v2-* que também
    definem display. */
@@ -1788,32 +1610,31 @@ textarea.v2-entrada {
     .v2-ficha,
     .v2-tabela-area,
     .v2-rail nav,
-    .v2-navegacao-movel,
     .v2-gaveta__corpo
 ) {
     scrollbar-width: thin;
     scrollbar-color: var(--v2-barra) transparent;
 }
 
-.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-navegacao-movel, .v2-gaveta__corpo)::-webkit-scrollbar {
+.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-gaveta__corpo)::-webkit-scrollbar {
     width: 10px;
     height: 10px;
 }
 
-.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-navegacao-movel, .v2-gaveta__corpo)::-webkit-scrollbar-track {
+.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-gaveta__corpo)::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-navegacao-movel, .v2-gaveta__corpo)::-webkit-scrollbar-thumb {
+.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-gaveta__corpo)::-webkit-scrollbar-thumb {
     border: 3px solid transparent;
     border-radius: 999px;
     background-color: transparent;
     background-clip: padding-box;
 }
 
-.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-navegacao-movel, .v2-gaveta__corpo):hover::-webkit-scrollbar-thumb,
-.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-navegacao-movel, .v2-gaveta__corpo):focus-within::-webkit-scrollbar-thumb,
-.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-navegacao-movel, .v2-gaveta__corpo)[data-rolagem='ativa']::-webkit-scrollbar-thumb {
+.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-gaveta__corpo):hover::-webkit-scrollbar-thumb,
+.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-gaveta__corpo):focus-within::-webkit-scrollbar-thumb,
+.v2-root :where(.v2-principal, .v2-rolagem, .v2-conversas__rolagem, .v2-thread__corpo, .v2-ficha, .v2-tabela-area, .v2-rail nav, .v2-gaveta__corpo)[data-rolagem='ativa']::-webkit-scrollbar-thumb {
     background-color: var(--v2-barra);
 }
 

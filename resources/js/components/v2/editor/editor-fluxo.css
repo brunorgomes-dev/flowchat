@@ -140,10 +140,6 @@
     padding: 0.875rem;
 }
 
-.v2-editor-fluxo__painel-corpo--sem-espaco {
-    padding: 0;
-}
-
 .v2-editor-fluxo__grupo {
     display: grid;
     gap: 1rem;
@@ -573,68 +569,6 @@
     color: var(--v2-ink-2);
     font-size: 0.75rem;
     line-height: 1.55;
-}
-
-.v2-editor-fluxo__miniatura-midia {
-    align-self: flex-end;
-    max-width: min(88%, 26rem);
-    overflow: hidden;
-    border: 1px solid color-mix(in oklab, var(--v2-primario) 28%, var(--v2-line));
-    border-right: 2px solid var(--v2-primario);
-    background: color-mix(in oklab, var(--v2-primario) 8%, var(--v2-surface));
-}
-
-.v2-editor-fluxo__miniatura-midia--video .v2-editor-fluxo__miniatura-thumb {
-    display: flex;
-    aspect-ratio: 16 / 9;
-    align-items: center;
-    justify-content: center;
-    background: color-mix(in oklab, var(--v2-primario) 18%, var(--v2-surface));
-}
-
-.v2-editor-fluxo__miniatura-thumb svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    color: var(--v2-sobre-primario);
-}
-
-.v2-editor-fluxo__miniatura-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.625rem;
-}
-
-.v2-editor-fluxo__miniatura-icone {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 999px;
-    background: var(--v2-areia);
-    color: #101014;
-}
-
-.v2-editor-fluxo__miniatura-icone svg {
-    width: 0.875rem;
-    height: 0.875rem;
-}
-
-.v2-editor-fluxo__miniatura-nome {
-    overflow: hidden;
-    margin: 0;
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.v2-editor-fluxo__miniatura-meta {
-    margin: 0.0625rem 0 0;
-    color: var(--v2-ink-2);
-    font-size: 0.6875rem;
 }
 
 .v2-editor-fluxo__condicao-lista {
