@@ -7,6 +7,7 @@
         "dev": "vite",
         "lint": "eslint resources/js",
         "lint:fix": "eslint resources/js --fix",
+        "test": "vitest run",
         "e2e": "playwright test"
     },
     "devDependencies": {
@@ -19,7 +20,8 @@
         "globals": "^17.14.0",
         "laravel-vite-plugin": "^3.1",
         "tailwindcss": "^4.0.0",
-        "vite": "^8.0.0"
+        "vite": "^8.0.0",
+        "vitest": "^4.1.12"
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
