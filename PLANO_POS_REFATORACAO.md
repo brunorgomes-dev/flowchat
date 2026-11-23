@@ -23,7 +23,7 @@ Evoluir a confiabilidade dos envios e acrescentar automação por anúncio sem a
 
 ### Fase 1 — Corrida na conexão da Página
 
-**Prioridade:** recomendada antes de onboarding OAuth simultâneo de várias contas; a chave única existente já protege a associação e o roteamento entre contas.  
+**Prioridade:** recomendada antes de onboarding OAuth simultâneo de várias contas; a chave única existente já protege a associação e o roteamento entre contas.
 **Viabilidade:** alta; esforço pequeno/médio; sem migration prevista. O risco é erro inesperado/estado externo inconsistente na tentativa perdedora, não vínculo duplicado.
 
 1. Preservar as unicidades existentes de `account_id` e `page_id`; confirmar que OAuth e configuração manual tratam ambas de forma coerente.
@@ -35,7 +35,7 @@ Evoluir a confiabilidade dos envios e acrescentar automação por anúncio sem a
 
 ### Fase 2 — Regra de versão do fluxo em execução
 
-**Prioridade:** alta antes de clientes dependerem de editar fluxos com execuções em andamento.  
+**Prioridade:** alta antes de clientes dependerem de editar fluxos com execuções em andamento.
 **Viabilidade:** média/alta; provável migration; requer decisão sobre conteúdo e mídia.
 
 **Decisão a fechar antes de codificar:** recomendação inicial: congelar a definição do fluxo no início de cada execução. Edições passam a valer para novas execuções; execuções abertas continuam usando as etapas, condições, pausas e textos existentes no snapshot.
@@ -50,7 +50,7 @@ Evoluir a confiabilidade dos envios e acrescentar automação por anúncio sem a
 
 ### Fase 3 — Serialização de início e prova de concorrência MySQL
 
-**Prioridade:** alta antes de permitir ações manuais e automáticas concorrentes com uso real; obrigatória antes de escalar workers.  
+**Prioridade:** alta antes de permitir ações manuais e automáticas concorrentes com uso real; obrigatória antes de escalar workers.
 **Viabilidade:** média; requer ambiente MySQL descartável e coordenação entre caminhos de início.
 
 1. Inventariar os caminhos que iniciam execução: mensagem recebida, agenda e início manual. O caminho manual já bloqueia a linha do contato; os outros precisam adotar a mesma regra.
@@ -63,8 +63,8 @@ Evoluir a confiabilidade dos envios e acrescentar automação por anúncio sem a
 
 ### Fase 4 — Gatilho por anúncio/campanha
 
-**Necessidade:** confirmada pelo usuário.  
-**Prioridade:** após as regras de versão e concorrência, para que contexto e início sejam consistentes com múltiplos workers.  
+**Necessidade:** confirmada pelo usuário.
+**Prioridade:** após as regras de versão e concorrência, para que contexto e início sejam consistentes com múltiplos workers.
 **Viabilidade:** média; provavelmente exige mudança de schema nas regras de fluxo e na UI.
 
 1. Especificar seleção do anúncio: proposta inicial é associar um `ad_id` exato a uma regra/fluxo. Não presumir agrupamento por campanha, pois a origem hoje persiste `ad_id`, não uma entidade de campanha completa.
