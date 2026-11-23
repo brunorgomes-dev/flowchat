@@ -4,7 +4,7 @@
 >
 > **Baseline original:** commit `d0c2613` (18/11/2026). Os números da seção 2 são uma fotografia histórica, não o estado atual.
 >
-> **Estado atual:** branch `refactor/fase-3-frontend`, HEAD `eadda1d`; limpeza CSS em `d34995d`, plano atualizado em `129bcd8`. `LEMBRETES.md` é arquivo local ignorado pelo Git e recebeu as triagens desta retomada. Tags `checkpoint/fase-0`, `checkpoint/fase-1` e `checkpoint/fase-2` existem; Fase 3 ainda sem tag.
+> **Estado atual:** branch `refactor/fase-3-frontend`; limpeza CSS concluída em commit próprio. `LEMBRETES.md` é arquivo local ignorado pelo Git e recebeu as triagens desta retomada. Tags `checkpoint/fase-0`, `checkpoint/fase-1` e `checkpoint/fase-2` existem; Fase 3 ainda sem tag.
 >
 > **Objetivo:** reduzir complexidade e duplicação sem mudar comportamento, com cada fase reversível e verificável isoladamente.
 
