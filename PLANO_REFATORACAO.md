@@ -967,17 +967,17 @@ Plano:
 
 ### 6.8 Critérios de aceite da Fase 3
 
-- [ ] Páginas V2 refatoradas divididas por responsabilidade; ~300 linhas é uma meta de revisão, não um limite mecânico. Registrar justificativa para qualquer página acima disso.
-- [ ] Hook + componentes extraídos com testes unitários das funções puras.
-- [ ] Playwright cobre login, conversas, fluxos, editor e agendamentos.
-- [ ] Nenhum `console.error` nas telas testadas.
-- [ ] Comparação visual aprovada nas 4 larguras, tema claro e escuro.
-- [ ] Build verde e tamanho de bundle registrado.
+- [x] Páginas V2 refatoradas divididas por responsabilidade; todas abaixo de 300 linhas nesta branch. O valor é meta de revisão, não limite mecânico.
+- [x] Hooks e componentes extraídos; funções puras do editor cobertas por testes unitários.
+- [x] Playwright cobre login, conversas, fluxos, editor e agendamentos.
+- [x] Nenhum `console.error` ou erro de página no login e nas sete rotas V2 verificadas nesta retomada.
+- [x] Comparação visual aprovada nas quatro larguras em tema claro e escuro.
+- [x] Build verde e tamanho do bundle registrado no checklist mestre.
 - [x] `ponytail-review` aplicada nesta retomada às páginas refatoradas; achados e limites registrados acima.
-- [ ] `ponytail-audit` final comparado com o inicial. Busca em Markdown e relatórios não encontrou relatório Ponytail pré-Fase 0; sem esse artefato, a comparação histórica não pode ser feita. Registrar a auditoria final e a limitação antes de fechar.
+- [x] Auditoria final registrada em `relatorios/2026-11-23-auditoria-ponytail-fase-3.md`. Busca em arquivos, histórico Git e artefatos/sessões locais do OpenCode não encontrou audit Ponytail inicial; a comparação histórica é impossível. Este relatório fica como referência para a próxima auditoria.
 - [ ] Tag `checkpoint/fase-3` criada.
 
-**Auditoria final (23/11/2026):** lidos README, dependências, configuração Docker/build, rotas, controllers de webhook/OAuth, jobs de entrada/envio/agendamento, comando de despacho e testes associados. Não apareceu achado `Must fix` atribuível à Fase 3. O relatório Ponytail anterior à Fase 0 não foi encontrado em `relatorios/`, `RELATORIOS.md` ou nos demais Markdown rastreados; portanto não há comparação de dívida antes/depois confiável. O estado final da auditoria e os limites de leitura estão registrados em `LEMBRETES.md`. Não marque a fase/tag como concluída até resolver a documentação do audit ausente e verificar os itens de aceite ainda abertos.
+**Auditoria final (23/11/2026):** sem achado `Must fix` que bloqueie a Fase 3. O relatório final, as verificações, os seis itens para triagem e as limitações de escopo estão em `relatorios/2026-11-23-auditoria-ponytail-fase-3.md`. O audit Ponytail anterior à Fase 0 não foi encontrado; a comparação histórica fica registrada como indisponível, e este relatório estabelece a referência preservada daqui em diante.
 
 ### 6.9 Riscos e mitigação
 
@@ -1122,13 +1122,13 @@ As Fases 0, 1 e 2 têm tags de checkpoint no repositório. Os checklists abaixo 
 - [x] Fazer `ponytail-review` por página nas extrações de Editor e Conversas; resumo e achados registrados nesta retomada
 - [x] Registrar em `LEMBRETES.md` a contagem paginada de Contas, o salto ao carregar histórico e o erro de histórico sem feedback; correções seguem separadas do escopo da refatoração
 - [x] Verificar a suíte Playwright (14/14) e confirmar cobertura de Login, Conversas, Fluxos, Editor e Agendamentos
-- [ ] Revisar console errors nas telas cobertas
+- [x] Revisar erros de console e erros de página em login e rotas V2 (nenhum encontrado)
 - [x] Remover CSS órfão em commit próprio após verificar referências (`d34995d`)
 - [x] Comparação visual aprovada: 32 capturas claras e 20 escuras idênticas ao baseline, quatro larguras; caminhos registrados acima
 - [x] `npm run lint` (0 erros; 9 warnings anotados) e `npm run build`; tamanho CSS caiu 4,11 KB (EditorFluxo 17,60→16,35 KB; LayoutV2 36,09→33,23 KB); JS permaneceu em 382,95 KB / 118,35 KB gzip
 - [x] Reconciliar 157 testes no baseline versus 154 atuais: 11 exclusivos do preview/legado removidos, 2 comportamentos preservados, 8 novos; saldo −3
 - [x] Auditoria de código final executada nos principais caminhos de entrada, autenticação, OAuth, webhook, jobs e configuração; sem `Must fix` no escopo da Fase 3. Comparação com auditoria inicial indisponível porque o relatório inicial não foi localizado.
-- [ ] Registrar o audit Ponytail final e comparar com o audit inicial; o relatório inicial não foi encontrado nos artefatos disponíveis
+- [x] Registrar o audit Ponytail final e marcar que o audit inicial não foi encontrado; relatório final preservado como referência futura
 - [ ] Criar tag `checkpoint/fase-3` somente após todos os gates acima estarem verdes
 
 ---
