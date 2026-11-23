@@ -4,7 +4,7 @@
 >
 > **Baseline original:** commit `d0c2613` (18/11/2026). Os números da seção 2 são uma fotografia histórica, não o estado atual.
 >
-> **Estado atual:** branch `refactor/fase-3-frontend`, HEAD `d34995d`; alterações CSS órfãs removidas nesse commit; este plano e o registro em `LEMBRETES.md` ainda aguardam commit. Tags `checkpoint/fase-0`, `checkpoint/fase-1` e `checkpoint/fase-2` existem. A Fase 3 ainda não tem tag.
+> **Estado atual:** branch `refactor/fase-3-frontend`, HEAD `eadda1d`; limpeza CSS em `d34995d`, plano atualizado em `129bcd8`. `LEMBRETES.md` é arquivo local ignorado pelo Git e recebeu as triagens desta retomada. Tags `checkpoint/fase-0`, `checkpoint/fase-1` e `checkpoint/fase-2` existem; Fase 3 ainda sem tag.
 >
 > **Objetivo:** reduzir complexidade e duplicação sem mudar comportamento, com cada fase reversível e verificável isoladamente.
 
@@ -29,7 +29,7 @@
 | 0 | Concluída e tagueada | `checkpoint/fase-0` existe. Consulte os commits da fase para os gates executados. |
 | 1 | Concluída e tagueada | `checkpoint/fase-1` existe. |
 | 2 | Concluída e tagueada | `checkpoint/fase-2` existe. |
-| 3 | Fechamento pendente | Retomada em 23/11: PHP 154/154 (1.007 asserções), Pint, Vitest 19/19 e Playwright 14/14 aprovados. `npm run lint` encerrou com 0 erros e 9 warnings; build passou. CSS órfão removido em `d34995d`. Falta concluir/documentar o audit Ponytail final e resolver a comparação com o audit inicial, que não foi localizado. |
+| 3 | Fechamento pendente | Retomada em 23/11: PHP 154/154 (1.007 asserções), Pint, Vitest 19/19 e Playwright 14/14 aprovados. `npm run lint` encerrou com 0 erros e 9 warnings; build passou. CSS órfão removido em `d34995d`. Audit final registrado; comparação histórica depende de localizar o audit inicial, ausente nos artefatos pesquisados. |
 
 **Ponto de retomada:** revisão Ponytail por página concluída para as páginas refatoradas. Foram comparadas 32 capturas claras e 20 escuras pixel a pixel com o baseline existente (todas idênticas); também foram inspecionadas as oito rotas em quatro tamanhos. O CSS órfão foi removido em commit separado. Capturas e comparações temporárias: `%LOCALAPPDATA%\Temp\opencode\refatoracao` (baselines e recortes) e `%LOCALAPPDATA%\Temp\flowchat-visual-pos-css` (64 capturas atuais); são artefatos locais fora do repositório. Permanecem três itens de experiência em Conversas/Contas, preexistentes e registrados em `LEMBRETES.md`, além do fechamento da auditoria final.
 
@@ -1121,7 +1121,7 @@ As Fases 0, 1 e 2 têm tags de checkpoint no repositório. Os checklists abaixo 
 - [x] Inspecionar Configurações, Conexão, Convites e Contas; registrar o achado em Contas acima
 - [x] Fazer `ponytail-review` por página nas extrações de Editor e Conversas; resumo e achados registrados nesta retomada
 - [x] Registrar em `LEMBRETES.md` a contagem paginada de Contas, o salto ao carregar histórico e o erro de histórico sem feedback; correções seguem separadas do escopo da refatoração
-- [ ] Verificar o teste Playwright e completar a cobertura prevista para Login, Conversas, Fluxos, Editor e Agendamentos
+- [x] Verificar a suíte Playwright (14/14) e confirmar cobertura de Login, Conversas, Fluxos, Editor e Agendamentos
 - [ ] Revisar console errors nas telas cobertas
 - [x] Remover CSS órfão em commit próprio após verificar referências (`d34995d`)
 - [x] Comparação visual aprovada: 32 capturas claras e 20 escuras idênticas ao baseline, quatro larguras; caminhos registrados acima
