@@ -1,6 +1,6 @@
 # Plano de evolução pós-refatoração do FlowChat
 
-> **Estado:** proposta de execução, ainda sem mudanças de código. A refatoração das Fases 0–3 está encerrada em `checkpoint/fase-3`.
+> **Estado:** Fase 1 concluída nos commits `58a9315` e `350f9de`; Fases 2–4 ainda não iniciadas. A refatoração das Fases 0–3 está encerrada em `checkpoint/fase-3`.
 >
 > **Escopo aprovado para planejamento:** exclusividade e tratamento de corrida na conexão de Página; regra de versão das execuções de fluxo; concorrência com MySQL; gatilho de fluxo por anúncio/campanha.
 >
@@ -19,12 +19,16 @@ Evoluir a confiabilidade dos envios e acrescentar automação por anúncio sem a
 - O Compose define um único serviço worker por padrão. O início manual já bloqueia a linha do contato em transação, mas o início automático por mensagem e por agendamento não usa a mesma serialização. Uma ação manual simultânea com esses caminhos ainda pode competir mesmo sem escalar workers. A suíte PHP usa SQLite em memória; não prova concorrência real em MySQL.
 - As funcionalidades de billing, múltiplos usuários, relatórios e IA não serão iniciadas nem incluídas como dependências deste plano.
 
+**Andamento da Fase 1:** a gravação OAuth agora bloqueia a linha da conta, repete a verificação de disponibilidade após a inscrição Meta e trata conflito de unicidade sem remover a inscrição usada pela conexão vencedora. Nenhuma migration foi criada. Verificação: teste direcionado 4/4 (27 asserções), suíte PHP 158/158 (1.034 asserções) e Pint aprovado. Commits `58a9315` e `350f9de`.
+
 ## Ordem de execução
 
 ### Fase 1 — Corrida na conexão da Página
 
 **Prioridade:** recomendada antes de onboarding OAuth simultâneo de várias contas; a chave única existente já protege a associação e o roteamento entre contas.
 **Viabilidade:** alta; esforço pequeno/médio; sem migration prevista. O risco é erro inesperado/estado externo inconsistente na tentativa perdedora, não vínculo duplicado.
+
+**Estado:** concluída em `58a9315` e `350f9de`; aceite verificado por teste direcionado e suíte completa.
 
 1. Preservar as unicidades existentes de `account_id` e `page_id`; confirmar que OAuth e configuração manual tratam ambas de forma coerente.
 2. Tratar violações dessas chaves no OAuth como conflitos esperados, com retorno claro em vez de erro 500.

@@ -43,6 +43,7 @@ Não encontrei `Must fix` novo que impeça a Fase 3. Os itens abaixo têm cenár
    - **Problema:** Duas contas podem passar pela consulta simultaneamente. A restrição única existente em `page_id` impede associação duplicada, mas a segunda gravação pode falhar sem tratamento depois da inscrição do app na Meta.
    - **Correção mínima:** Tratar a violação de unicidade como conflito de seleção e exibir mensagem clara. Não adicionar outra migration de unicidade; ela já existe. Não remover a inscrição Meta do vencedor da corrida.
    - **Se ficar assim:** Uma tentativa concorrente pode terminar em erro interno e confundir quem conecta; a restrição do banco impede o roteamento para a conta errada.
+   - **Estado:** corrigido em `58a9315` e coberto em `350f9de`; a conta é bloqueada durante a persistência, a Página é revalidada, e a inscrição da Meta vencedora é preservada no conflito. Sem migration; teste direcionado 4/4 e suíte PHP 158/158.
 
 ### Nice to have
 
