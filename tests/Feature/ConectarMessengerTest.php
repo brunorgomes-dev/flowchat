@@ -117,6 +117,44 @@ class ConectarMessengerTest extends TestCase
         $this->assertSame('token_vencedor', $integracao->page_access_token);
     }
 
+    public function test_consulta_a_integracao_atual_depois_de_aguardar_a_meta(): void
+    {
+        $utilizador = User::factory()->create();
+        $nonce = $this->prepararPaginas($utilizador, [[
+            'id' => 'pagina_selecionada',
+            'name' => 'Página selecionada',
+            'access_token' => 'token_selecionado',
+        ]]);
+
+        Http::fake(function (ClientRequest $request) use ($utilizador) {
+            if ($request->method() === 'POST') {
+                // Simula outra seleção da mesma conta sendo concluída durante
+                // a chamada externa, antes de esta requisição persistir.
+                $utilizador->account->messengerIntegration()->create([
+                    'page_id' => 'pagina_intermediaria',
+                    'page_access_token' => 'token_intermediario',
+                ]);
+
+                return Http::response(['success' => true]);
+            }
+
+            return Http::response([], 200);
+        });
+
+        $this->actingAs($utilizador)
+            ->withSession(['messenger_oauth_paginas' => $nonce])
+            ->post('/configuracoes/messenger/paginas', ['page_id' => 'pagina_selecionada'])
+            ->assertRedirect(route('configuracoes.index'));
+
+        $integracao = $utilizador->account->messengerIntegration()->firstOrFail();
+        $this->assertSame('pagina_selecionada', $integracao->page_id);
+        $this->assertDatabaseMissing('messenger_integrations', ['page_id' => 'pagina_intermediaria']);
+
+        Http::assertSentCount(2);
+        Http::assertSent(fn (ClientRequest $request): bool => $request->method() === 'DELETE'
+            && str_ends_with($request->url(), '/pagina_intermediaria/subscribed_apps'));
+    }
+
     /**
      * @param  array<int, array{id: string, name: string, access_token: string}>  $paginas
      */
