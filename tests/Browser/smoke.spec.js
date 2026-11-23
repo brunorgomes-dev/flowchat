@@ -41,6 +41,37 @@ test('cria fluxo com etapa, salva e recarrega', async ({ page }) => {
     await expect(page.getByLabel('Nome do fluxo')).toHaveValue('Fluxo Playwright');
 });
 
+test('agenda, filtra e cancela um agendamento', async ({ page }) => {
+    await page.goto('/agendamentos');
+
+    const daquiDuasHoras = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    const valorLocal = new Date(daquiDuasHoras.getTime() - daquiDuasHoras.getTimezoneOffset() * 60_000)
+        .toISOString()
+        .slice(0, 16);
+
+    await page.locator('#ag-fluxo').selectOption({ label: 'Fluxo E2E' });
+    await page.locator('#ag-contato').selectOption({ label: 'Contato E2E' });
+    await page.locator('#ag-data').fill(valorLocal);
+    await page.getByRole('button', { name: 'Agendar', exact: true }).click();
+
+    await expect(page.getByText('Agendamento criado')).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Pendente' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Pendentes', exact: true }).click();
+    await expect(page.getByRole('cell', { name: 'Pendente' })).toBeVisible();
+
+    await page.getByRole('row').filter({ hasText: 'Fluxo E2E' })
+        .getByRole('button', { name: 'Cancelar', exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('button', { name: 'Cancelar agendamento', exact: true }).click();
+
+    await expect(page.getByText('Agendamento cancelado')).toBeVisible();
+    await expect(page.getByText('Nenhum agendamento neste estado')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Todos', exact: true }).click();
+    await expect(page.getByRole('cell', { name: 'Cancelado' })).toBeVisible();
+});
+
 test('nenhuma tela responde 5xx nem loga erro no console', async ({ page }) => {
     const falhas = [];
     const erros = [];
