@@ -15,6 +15,24 @@ test('fluxos lista o fluxo semeado', async ({ page }) => {
     await expect(page.getByText('Fluxo E2E').first()).toBeVisible();
 });
 
+test('fluxos pesquisa, filtra e abre detalhes', async ({ page }) => {
+    await page.goto('/fluxos');
+
+    await page.getByLabel('Pesquisar fluxos por nome').fill('Fluxo E2E');
+    await expect(page.getByText('1 de 1')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Inativos', exact: true }).click();
+    await expect(page.getByText('Nenhum fluxo encontrado')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Limpar pesquisa e filtros' }).click();
+    await page.getByRole('button', { name: 'Detalhes' }).first().click();
+
+    const dialogo = page.getByRole('dialog');
+    await expect(dialogo.getByText('Boas-vindas E2E')).toBeVisible();
+    await dialogo.getByRole('button', { name: 'Fechar' }).click();
+    await expect(dialogo).toBeHidden();
+});
+
 test('editor de fluxo abre', async ({ page }) => {
     await page.goto('/fluxos/criar');
     await expect(page.getByText('Novo fluxo').first()).toBeVisible();
