@@ -975,7 +975,7 @@ Plano:
 - [x] Build verde e tamanho do bundle registrado no checklist mestre.
 - [x] `ponytail-review` aplicada nesta retomada às páginas refatoradas; achados e limites registrados acima.
 - [x] Auditoria final registrada em `relatorios/2026-11-23-auditoria-ponytail-fase-3.md`. Busca em arquivos, histórico Git e artefatos/sessões locais do OpenCode não encontrou audit Ponytail inicial; a comparação histórica é impossível. Este relatório fica como referência para a próxima auditoria.
-- [ ] Tag `checkpoint/fase-3` criada.
+- [x] Tag anotada `checkpoint/fase-3` criada após os gates desta retomada.
 
 **Auditoria final (23/11/2026):** sem achado `Must fix` que bloqueie a Fase 3. O relatório final, as verificações, os seis itens para triagem e as limitações de escopo estão em `relatorios/2026-11-23-auditoria-ponytail-fase-3.md`. O audit Ponytail anterior à Fase 0 não foi encontrado; a comparação histórica fica registrada como indisponível, e este relatório estabelece a referência preservada daqui em diante.
 
@@ -1129,7 +1129,7 @@ As Fases 0, 1 e 2 têm tags de checkpoint no repositório. Os checklists abaixo 
 - [x] Reconciliar 157 testes no baseline versus 154 atuais: 11 exclusivos do preview/legado removidos, 2 comportamentos preservados, 8 novos; saldo −3
 - [x] Auditoria de código final executada nos principais caminhos de entrada, autenticação, OAuth, webhook, jobs e configuração; sem `Must fix` no escopo da Fase 3. Comparação com auditoria inicial indisponível porque o relatório inicial não foi localizado.
 - [x] Registrar o audit Ponytail final e marcar que o audit inicial não foi encontrado; relatório final preservado como referência futura
-- [ ] Criar tag `checkpoint/fase-3` somente após todos os gates acima estarem verdes
+- [x] Criar tag `checkpoint/fase-3` após todos os gates acima estarem verdes
 
 ---
 

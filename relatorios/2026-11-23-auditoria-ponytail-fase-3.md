@@ -1,7 +1,7 @@
 # Auditoria Ponytail — fechamento da Fase 3
 
-**Data:** 23/11/2026  
-**Branch:** `refactor/fase-3-frontend`  
+**Data:** 23/11/2026
+**Branch:** `refactor/fase-3-frontend`
 **Referência anterior:** não localizada. Esta auditoria passa a ser a primeira referência preservada para comparações futuras.
 
 ## O que o repositório faz
