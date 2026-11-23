@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Account;
 use App\Models\MessengerIntegration;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -199,15 +202,7 @@ class ConectarMessengerController extends Controller
             return $this->falha($request, 'O usuário não está associado a uma conta FlowChat.');
         }
 
-        $jaConectada = MessengerIntegration::query()
-            ->where('page_id', $pagina['id'])
-            ->where('account_id', '!=', $conta->id)
-            ->exists();
-        if ($jaConectada) {
-            throw ValidationException::withMessages([
-                'page_id' => 'Esta Página já está conectada a outra conta FlowChat.',
-            ]);
-        }
+        $this->validarDisponibilidadeDaPagina($pagina['id'], (int) $conta->id);
 
         try {
             $respostaWebhook = Http::connectTimeout(5)->timeout(15)->asForm()->withToken($pagina['access_token'])
@@ -228,11 +223,42 @@ class ConectarMessengerController extends Controller
             ]);
         }
 
-        $integracaoAnterior = $conta->messengerIntegration;
-        $conta->messengerIntegration()->updateOrCreate([], [
-            'page_id' => $pagina['id'],
-            'page_access_token' => $pagina['access_token'],
-        ]);
+        try {
+            $integracaoAnterior = DB::transaction(function () use ($conta, $pagina): ?MessengerIntegration {
+                // Serializa escolhas simultâneas da mesma conta. O acesso à
+                // Meta já ocorreu fora da transação para não manter lock de
+                // banco enquanto aguardamos uma chamada de rede.
+                $contaBloqueada = Account::query()->lockForUpdate()->findOrFail($conta->id);
+
+                // Outra conta pode ter conectado a Página depois da checagem
+                // inicial e da chamada à Meta.
+                $this->validarDisponibilidadeDaPagina($pagina['id'], (int) $contaBloqueada->id);
+
+                $integracaoAnterior = $contaBloqueada->messengerIntegration;
+
+                $contaBloqueada->messengerIntegration()->updateOrCreate([], [
+                    'page_id' => $pagina['id'],
+                    'page_access_token' => $pagina['access_token'],
+                ]);
+
+                return $integracaoAnterior;
+            });
+        } catch (UniqueConstraintViolationException $excecao) {
+            // Mantém a restrição do banco como última barreira caso duas
+            // contas passem pela checagem transacional ao mesmo tempo.
+            $integracaoConcorrente = MessengerIntegration::query()
+                ->where('page_id', $pagina['id'])
+                ->first();
+
+            if ($integracaoConcorrente === null
+                || (int) $integracaoConcorrente->account_id === (int) $conta->id) {
+                throw $excecao;
+            }
+
+            throw ValidationException::withMessages([
+                'page_id' => 'Esta Página foi conectada a outra conta enquanto a solicitação era processada. Atualize a lista e escolha outra Página.',
+            ]);
+        }
 
         $remocaoAnteriorConfirmada = true;
         if ($integracaoAnterior !== null && $integracaoAnterior->page_id !== $pagina['id']) {
@@ -330,6 +356,20 @@ class ConectarMessengerController extends Controller
     private function chavePaginas(int $userId, string $nonce): string
     {
         return 'messenger:oauth:paginas:'.$userId.':'.$nonce;
+    }
+
+    private function validarDisponibilidadeDaPagina(string $pageId, int $accountId): void
+    {
+        $jaConectada = MessengerIntegration::query()
+            ->where('page_id', $pageId)
+            ->where('account_id', '!=', $accountId)
+            ->exists();
+
+        if ($jaConectada) {
+            throw ValidationException::withMessages([
+                'page_id' => 'Esta Página já está conectada a outra conta FlowChat.',
+            ]);
+        }
     }
 
     private function falha(Request $request, string $mensagem): RedirectResponse
