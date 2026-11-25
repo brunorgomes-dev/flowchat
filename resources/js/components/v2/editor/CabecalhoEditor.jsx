@@ -16,6 +16,9 @@ export default function CabecalhoEditor({
     aoAlternarAtivo,
     gatilhosAtivos,
     aoAlterarGatilho,
+    anuncios = [],
+    anuncioId = '',
+    aoAlterarAnuncio,
     horario,
     aoAlterarHorario,
 }) {
@@ -96,6 +99,40 @@ export default function CabecalhoEditor({
                             );
                         })}
                     </fieldset>
+                    <div className="v2-editor-fluxo__anuncio">
+                        <label className="v2-campo" htmlFor="fluxo-anuncio">
+                            <span className="v2-campo__rotulo">Restringir a um anúncio (opcional)</span>
+                            <select
+                                id="fluxo-anuncio"
+                                value={anuncioId}
+                                onChange={(evento) => aoAlterarAnuncio(evento.target.value)}
+                                disabled={!gatilhosAtivos.mensagem_recebida || anuncios.length === 0}
+                                className="v2-entrada"
+                                aria-describedby="fluxo-anuncio-ajuda"
+                                aria-invalid={Boolean(erros.regras)}
+                            >
+                                <option value="">Qualquer origem</option>
+                                {anuncioId && !anuncios.some((anuncio) => anuncio.ad_id === anuncioId) && (
+                                    <option value={anuncioId}>Anúncio {anuncioId}</option>
+                                )}
+                                {anuncios.map((anuncio) => (
+                                    <option key={anuncio.ad_id} value={anuncio.ad_id}>
+                                        {(anuncio.ad_title || 'Anúncio sem título')} · ID {anuncio.ad_id}
+                                    </option>
+                                ))}
+                            </select>
+                            {erros.regras && <span role="alert" className="v2-campo__erro">{erros.regras}</span>}
+                        </label>
+                        <p id="fluxo-anuncio-ajuda" className="v2-campo__ajuda">
+                            {!gatilhosAtivos.mensagem_recebida
+                                ? 'Ative “Mensagem recebida” para filtrar por anúncio.'
+                                : anuncios.length === 0
+                                    ? 'Anúncios aparecerão aqui depois que o FlowChat registrar um referral.'
+                                    : anuncioId
+                                        ? 'A pessoa precisa enviar uma mensagem após chegar por esse anúncio.'
+                                        : 'Sem seleção, qualquer mensagem recebida pode iniciar este fluxo.'}
+                        </p>
+                    </div>
                 </div>
             </section>
 

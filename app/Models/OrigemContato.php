@@ -27,6 +27,8 @@ class OrigemContato extends Model
         'photo_url',
         'video_url',
         'mensagem_inicial',
+        'associada_em',
+        'contato_criado_pela_origem',
         'dados_brutos',
     ];
 
@@ -46,6 +48,8 @@ class OrigemContato extends Model
     {
         return [
             'dados_brutos' => 'array',
+            'associada_em' => 'datetime',
+            'contato_criado_pela_origem' => 'boolean',
         ];
     }
 

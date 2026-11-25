@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import { Plus, Trash2, Workflow } from 'lucide-react';
 import { Chip, Vazio } from '@/components/v2/pecas';
 import { formatarData } from '@/components/v2/formato';
-import { estaAtivo, rotulosGatilho } from './util';
+import { estaAtivo, rotuloRegra } from './util';
 
 /**
  * Lista de fluxos com estado vazio e ações de detalhe, edição e exclusão.
@@ -75,7 +75,7 @@ export default function ListaFluxos({ fluxos, filtrados, aoDetalhar, aoExcluir, 
                                         {gatilhosAtivos.length === 0 ? (
                                             <span className="text-[var(--v2-ink-2)]">Sem gatilho ativo</span>
                                         ) : gatilhosAtivos.map((regra) => (
-                                            <Chip key={regra.gatilho}>{rotulosGatilho[regra.gatilho] ?? regra.gatilho}</Chip>
+                                            <Chip key={regra.gatilho}>{rotuloRegra(regra)}</Chip>
                                         ))}
                                     </span>
                                 </td>

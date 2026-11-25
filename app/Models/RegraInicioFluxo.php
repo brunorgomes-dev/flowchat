@@ -9,7 +9,7 @@ class RegraInicioFluxo extends Model
 {
     protected $table = 'regras_inicio_fluxo';
 
-    protected $fillable = ['fluxo_id', 'gatilho', 'ativo'];
+    protected $fillable = ['fluxo_id', 'gatilho', 'ativo', 'ad_id'];
 
     public function fluxo(): BelongsTo
     {

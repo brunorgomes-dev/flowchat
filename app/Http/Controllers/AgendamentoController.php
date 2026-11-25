@@ -101,10 +101,9 @@ class AgendamentoController extends Controller
     }
 
     /**
-     * A Meta só aceita mensagem livre até 24 horas depois da última mensagem
-     * enviada pelo contato. Bloquear na criação evita agendamentos que só
-     * falhariam na Graph API. Sem a coluna (migration pendente), o
-     * comportamento anterior é preservado.
+     * Bloquear na criação evita agendamentos fora da janela permitida pela
+     * Meta. Para a maioria das conversas são 24 horas; a associada a clique
+     * em anúncio pode chegar a 7 dias da primeira mensagem.
      */
     private function validarJanelaDeMensagemLivre(User $utilizador, Contato $contato, CarbonInterface $executarEm): void
     {
@@ -115,7 +114,7 @@ class AgendamentoController extends Controller
         $limite = $contato->limiteDaJanelaDeMensagemLivre();
         if ($limite === null) {
             throw ValidationException::withMessages([
-                'executar_em' => 'Este contato ainda não enviou mensagem. A Meta só permite mensagem livre até 24 horas após a última mensagem recebida.',
+                'executar_em' => 'Este contato ainda não enviou mensagem com horário conhecido. A janela de mensagens da Meta não pode ser confirmada.',
             ]);
         }
 
@@ -123,7 +122,7 @@ class AgendamentoController extends Controller
         // permite mensagem livre.
         if ($executarEm->greaterThanOrEqualTo($limite)) {
             throw ValidationException::withMessages([
-                'executar_em' => 'A Meta só permite mensagem livre até 24 horas após a última mensagem do contato. Para este contato, o limite é '
+                'executar_em' => 'O horário escolhido está fora da janela de mensagens permitida pela Meta. Para este contato, o limite é '
                     .$limite->timezone($utilizador->fusoHorarioEfetivo())->format('d/m/Y H:i').'.',
             ]);
         }

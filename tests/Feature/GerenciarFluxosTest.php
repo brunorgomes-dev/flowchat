@@ -266,7 +266,7 @@ class GerenciarFluxosTest extends TestCase
         ]);
         $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
-        (new ProcessarMensagemEntrante($this->conta->id, '999', 'oi'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '999', 'oi', now()->getTimestampMs()))->handle();
 
         $this->assertDatabaseHas('mensagens', ['direcao' => 'enviada', 'texto' => 'Mensagem do painel']);
         $this->assertDatabaseHas('logs', [

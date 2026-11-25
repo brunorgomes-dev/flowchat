@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Database\Factories\ContatoFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,13 +32,35 @@ class Contato extends Model
     }
 
     /**
-     * Instante em que a janela de 24 horas termina. É um limite exclusivo:
-     * a Meta não permite mensagem livre nele nem depois dele. Devolve null
-     * quando o contato ainda não enviou mensagem.
+     * Instante em que a janela padrão termina (24 horas), ou a janela
+     * estendida de anúncio (até 7 dias desde a primeira mensagem após o
+     * clique). O limite é exclusivo.
      */
     public function limiteDaJanelaDeMensagemLivre(): ?CarbonInterface
     {
-        return $this->ultima_mensagem_recebida_em?->copy()->addHours(24);
+        $limitePadrao = $this->ultima_mensagem_recebida_em?->copy()->addHours(24);
+
+        if (! Schema::hasTable('origens_contato')
+            || ! Schema::hasColumn('origens_contato', 'associada_em')) {
+            return $limitePadrao;
+        }
+
+        $associacaoAnuncio = $this->origens()
+            ->where('categoria', 'anuncio')
+            ->whereNotNull('ad_id')
+            ->whereNotNull('associada_em')
+            ->orderByDesc('associada_em')
+            ->value('associada_em');
+
+        $limiteAnuncio = $associacaoAnuncio === null
+            ? null
+            : Carbon::parse($associacaoAnuncio, config('app.timezone'))->addDays(7);
+
+        if ($limitePadrao === null || ($limiteAnuncio !== null && $limiteAnuncio->greaterThan($limitePadrao))) {
+            return $limiteAnuncio;
+        }
+
+        return $limitePadrao;
     }
 
     public function account(): BelongsTo

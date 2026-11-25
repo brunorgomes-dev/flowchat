@@ -7,6 +7,7 @@ use App\Jobs\RegistrarOrigemContato;
 use App\Models\MessengerIntegration;
 use App\Support\TimestampEventoMeta;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -102,13 +103,21 @@ class WebhookMessengerController extends Controller
                     ]));
 
                     if (Cache::add($chaveOrigem, true, now()->addDay())) {
-                        RegistrarOrigemContato::dispatch(
+                        $jobOrigem = new RegistrarOrigemContato(
                             $integracao->account_id,
                             $psid,
                             $referral['dados'],
                             $referral['evento'],
                             is_string($mensagem['text'] ?? null) ? $mensagem['text'] : null,
                         );
+
+                        if (is_string($referral['dados']['ad_id'] ?? null) && $referral['dados']['ad_id'] !== '') {
+                            // Um referral de anúncio precisa estar gravado antes
+                            // da mensagem entrar na fila, para selecionar o fluxo correto.
+                            Bus::dispatchSync($jobOrigem);
+                        } else {
+                            RegistrarOrigemContato::dispatch($jobOrigem);
+                        }
                     }
                 }
 

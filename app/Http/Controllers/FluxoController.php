@@ -8,6 +8,7 @@ use App\Actions\Fluxos\ValidarEtapasDoFluxo;
 use App\Http\Requests\Fluxos\StoreFluxoRequest;
 use App\Http\Requests\Fluxos\UpdateFluxoRequest;
 use App\Models\Fluxo;
+use App\Models\OrigemContato;
 use App\Models\RegraInicioFluxo;
 use App\Models\User;
 use App\Support\ArmazenamentoMidia;
@@ -17,6 +18,8 @@ use App\Support\MidiaEtapa;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Throwable;
@@ -56,7 +59,7 @@ class FluxoController extends Controller
 
         return Inertia::render('V2/EditorFluxo', [
             'fluxo' => $fluxo->load(['etapas.condicoes', 'regras']),
-            ...$this->recursosDoEditor($request->user()),
+            ...$this->recursosDoEditor($request->user(), $fluxo),
         ]);
     }
 
@@ -215,7 +218,7 @@ class FluxoController extends Controller
      *
      * @return array<string, mixed>
      */
-    private function recursosDoEditor(User $utilizador): array
+    private function recursosDoEditor(User $utilizador, ?Fluxo $fluxo = null): array
     {
         $condicoesDisponiveis = DisponibilidadeDeColunas::condicaoHorario();
 
@@ -225,7 +228,42 @@ class FluxoController extends Controller
             'podeCondicaoHorario' => $condicoesDisponiveis && $utilizador->fusoConfirmado(),
             'suportaMidia' => MidiaEtapa::disponivel(),
             'fusoConta' => $utilizador->dadosFusoHorario(),
+            'anuncios' => $this->anunciosDisponiveis($utilizador, $fluxo),
         ];
+    }
+
+    /**
+     * @return list<array{ad_id: string, ad_title: ?string}>
+     */
+    private function anunciosDisponiveis(User $utilizador, ?Fluxo $fluxo): array
+    {
+        if (! Schema::hasTable('origens_contato')
+            || ! Schema::hasColumn('regras_inicio_fluxo', 'ad_id')) {
+            return [];
+        }
+
+        $anunciosAssociados = RegraInicioFluxo::query()
+            ->whereNotNull('ad_id')
+            ->when($fluxo !== null, fn ($consulta) => $consulta->where('fluxo_id', '!=', $fluxo->id))
+            ->pluck('ad_id');
+
+        return OrigemContato::query()
+            ->where('account_id', $utilizador->account_id)
+            ->where('categoria', 'anuncio')
+            ->whereNotNull('ad_id')
+            ->whereNotIn('ad_id', $anunciosAssociados)
+            ->select('ad_id')
+            ->selectRaw('MAX(ad_title) as ad_title')
+            ->selectRaw('MAX(id) as ultima_origem')
+            ->groupBy('ad_id')
+            ->orderByDesc('ultima_origem')
+            ->get()
+            ->map(fn (OrigemContato $origem): array => [
+                'ad_id' => (string) $origem->ad_id,
+                'ad_title' => $origem->ad_title,
+            ])
+            ->values()
+            ->all();
     }
 
     private function sincronizarRegras(Fluxo $fluxo, mixed $entrada): void
@@ -244,8 +282,10 @@ class FluxoController extends Controller
                         continue;
                     }
 
-                    $ativo = $item['ativo'] ?? $item['active'] ?? true;
-                    $estados[$gatilho] = (bool) $ativo;
+                    $estados[$gatilho] = [
+                        'ativo' => (bool) ($item['ativo'] ?? $item['active'] ?? true),
+                        'ad_id' => $gatilho === 'mensagem_recebida' ? ($item['ad_id'] ?? null) : null,
+                    ];
                 }
             } else {
                 foreach (['novo_contato', 'mensagem_recebida'] as $gatilho) {
@@ -254,19 +294,52 @@ class FluxoController extends Controller
                     }
 
                     $valor = $entrada[$gatilho];
-                    if (is_array($valor)) {
-                        $valor = $valor['ativo'] ?? $valor['active'] ?? true;
-                    }
-
-                    $estados[$gatilho] = (bool) $valor;
+                    $configuracao = is_array($valor) ? $valor : ['ativo' => $valor];
+                    $estados[$gatilho] = [
+                        'ativo' => (bool) ($configuracao['ativo'] ?? $configuracao['active'] ?? true),
+                        'ad_id' => $gatilho === 'mensagem_recebida' ? ($configuracao['ad_id'] ?? null) : null,
+                    ];
                 }
             }
         }
 
-        foreach ($estados as $gatilho => $ativo) {
+        foreach ($estados as $gatilho => $configuracao) {
+            $adId = $configuracao['ad_id'];
+            $suportaGatilhoAnuncio = Schema::hasColumn('regras_inicio_fluxo', 'ad_id');
+            if ($adId !== null && ! $suportaGatilhoAnuncio) {
+                throw ValidationException::withMessages(['regras' => 'Atualize o banco de dados para associar anúncios a este fluxo.']);
+            }
+            if ($adId !== null && (! is_string($adId) || strlen($adId) > 64)) {
+                throw ValidationException::withMessages(['regras' => 'Selecione um anúncio válido.']);
+            }
+
+            if ($adId !== null) {
+                $pertenceAConta = OrigemContato::query()
+                    ->where('account_id', $fluxo->account_id)
+                    ->where('categoria', 'anuncio')
+                    ->where('ad_id', $adId)
+                    ->exists();
+                if (! $pertenceAConta) {
+                    throw ValidationException::withMessages(['regras' => 'Escolha um anúncio que já tenha sido identificado nesta conta.']);
+                }
+
+                $jaAssociado = RegraInicioFluxo::query()
+                    ->where('ad_id', $adId)
+                    ->where('fluxo_id', '!=', $fluxo->id)
+                    ->exists();
+                if ($jaAssociado) {
+                    throw ValidationException::withMessages(['regras' => 'Esse anúncio já está associado a outro fluxo. Escolha outro ou remova a associação existente.']);
+                }
+            }
+
+            $atributos = ['ativo' => $configuracao['ativo']];
+            if ($suportaGatilhoAnuncio) {
+                $atributos['ad_id'] = $adId;
+            }
+
             RegraInicioFluxo::updateOrCreate(
                 ['fluxo_id' => $fluxo->id, 'gatilho' => $gatilho],
-                ['ativo' => $ativo],
+                $atributos,
             );
         }
     }

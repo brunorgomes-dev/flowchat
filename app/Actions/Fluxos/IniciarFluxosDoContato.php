@@ -8,8 +8,11 @@ use App\Models\Contato;
 use App\Models\ExecucaoFluxo;
 use App\Models\Fluxo;
 use App\Models\LogSistema;
+use App\Models\OrigemContato;
 use App\Support\Contatos\JanelaDeMensagemLivre;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Decide se o evento inicia um fluxo automático e, quando inicia, cria a
@@ -21,6 +24,51 @@ final class IniciarFluxosDoContato
 
     public function executar(Account $conta, Contato $contato): void
     {
+        $novoContato = $contato->wasRecentlyCreated;
+
+        DB::transaction(function () use ($conta, $contato, $novoContato): void {
+            $contatoBloqueado = Contato::query()
+                ->where('account_id', $conta->id)
+                ->lockForUpdate()
+                ->find($contato->id);
+
+            if ($contatoBloqueado === null) {
+                return;
+            }
+
+            $this->iniciarComContatoBloqueado($conta, $contatoBloqueado, $novoContato);
+        });
+    }
+
+    private function iniciarComContatoBloqueado(Account $conta, Contato $contato, bool $novoContato): void
+    {
+        $suportaGatilhoAnuncio = Schema::hasTable('origens_contato')
+            && Schema::hasColumn('regras_inicio_fluxo', 'ad_id')
+            && Schema::hasColumn('origens_contato', 'associada_em')
+            && Schema::hasColumn('origens_contato', 'contato_criado_pela_origem');
+        $origemAnuncio = $suportaGatilhoAnuncio
+            ? OrigemContato::query()
+                ->where('account_id', $conta->id)
+                ->where('contato_id', $contato->id)
+                ->where('categoria', 'anuncio')
+                ->whereNotNull('ad_id')
+                ->whereNull('associada_em')
+                ->where('created_at', '>=', now()->subDays(7))
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first()
+            : null;
+
+        $adId = $origemAnuncio?->ad_id;
+        if ($origemAnuncio !== null) {
+            // O prazo estendido de anúncio começa na primeira mensagem da
+            // pessoa após o clique, não no momento em que a fila processa.
+            $origemAnuncio->update([
+                'associada_em' => $contato->ultima_mensagem_recebida_em ?? now(),
+            ]);
+            $novoContato = $novoContato || $origemAnuncio->contato_criado_pela_origem;
+        }
+
         // Não inicia novo fluxo se já existe execução em andamento
         $emAndamento = ExecucaoFluxo::where('contato_id', $contato->id)
             ->whereNull('concluida_em')
@@ -32,17 +80,30 @@ final class IniciarFluxosDoContato
         // Gatilhos aplicáveis ao evento; um mesmo fluxo inicia uma única vez
         // (whereHas não duplica o fluxo mesmo se dois gatilhos casarem).
         $gatilhos = ['mensagem_recebida'];
-        if ($contato->wasRecentlyCreated) {
+        if ($novoContato) {
             $gatilhos[] = 'novo_contato';
         }
 
-        // Quando mais de um fluxo ativo casa com o mesmo evento, somente o
-        // mais antigo inicia: disparar todos entregava duas sequências
-        // intercaladas ao mesmo contato.
-        $fluxo = $conta->fluxos()->where('ativo', true)
-            ->whereHas('regras', fn ($consulta) => $consulta
-                ->where('ativo', true)
-                ->whereIn('gatilho', $gatilhos))
+        // A correspondência do anúncio tem prioridade sobre gatilhos genéricos.
+        $fluxo = $suportaGatilhoAnuncio && $adId !== null
+            ? $conta->fluxos()->where('ativo', true)
+                ->whereHas('regras', fn ($consulta) => $consulta
+                    ->where('ativo', true)
+                    ->where('gatilho', 'mensagem_recebida')
+                    ->where('ad_id', $adId))
+                ->orderBy('id')
+                ->first()
+            : null;
+
+        // Sem fluxo específico para este anúncio, usa os gatilhos genéricos.
+        // Entre fluxos genéricos, somente o mais antigo inicia.
+        $fluxo ??= $conta->fluxos()->where('ativo', true)
+            ->whereHas('regras', function ($consulta) use ($gatilhos, $suportaGatilhoAnuncio): void {
+                $consulta->where('ativo', true)->whereIn('gatilho', $gatilhos);
+                if ($suportaGatilhoAnuncio) {
+                    $consulta->whereNull('ad_id');
+                }
+            })
             ->orderBy('id')
             ->first();
 

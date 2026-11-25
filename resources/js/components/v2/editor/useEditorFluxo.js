@@ -15,6 +15,7 @@ import {
     INDICADOR_DIGITACAO_PADRAO_SEGUNDOS,
     normalizarDestino,
     PAUSA_PADRAO_SEGUNDOS,
+    prepararAnuncioId,
     prepararEtapas,
     prepararGatilhos,
     prepararHorario,
@@ -28,12 +29,13 @@ import {
  * Estado e ações do editor de fluxo: configuração, etapas, pausas, condições,
  * mídia, validação, salvamento e proteção contra saída com alterações.
  */
-export default function useEditorFluxo({ fluxo = null, suportaMidia = false, podeCondicaoHorario = false }) {
+export default function useEditorFluxo({ fluxo = null, suportaMidia = false, podeCondicaoHorario = false, anuncios = [] }) {
     const criando = !fluxo?.id;
     const [nome, setNome] = useState(fluxo?.nome ?? '');
     const [ativo, setAtivo] = useState(() => (criando ? true : estaAtivo(fluxo?.ativo)));
     const [etapas, setEtapas] = useState(() => prepararEtapas(fluxo));
     const [gatilhosAtivos, setGatilhosAtivos] = useState(() => prepararGatilhos(fluxo));
+    const [anuncioId, setAnuncioId] = useState(() => prepararAnuncioId(fluxo));
     const [horario, setHorario] = useState(() => prepararHorario(fluxo));
     const [pausasAtivas, setPausasAtivas] = useState(() => prepararPausas(prepararEtapas(fluxo)));
     const [etapaSelecionada, setEtapaSelecionada] = useState(0);
@@ -59,7 +61,7 @@ export default function useEditorFluxo({ fluxo = null, suportaMidia = false, pod
 
     const temAlteracoes = !estadosIguais(
         dadosBase,
-        capturarEstado({ nome, ativo, etapas, gatilhosAtivos, horario }),
+        capturarEstado({ nome, ativo, etapas, gatilhosAtivos, anuncioId, horario }),
     );
 
     const versaoFluxo = `${fluxo?.id ?? 'novo'}:${fluxo?.updated_at ?? ''}`;
@@ -72,12 +74,14 @@ export default function useEditorFluxo({ fluxo = null, suportaMidia = false, pod
 
         const etapasPersistidas = prepararEtapas(fluxo);
         const gatilhosPersistidos = prepararGatilhos(fluxo);
+        const anuncioIdPersistido = prepararAnuncioId(fluxo);
         const horarioPersistido = prepararHorario(fluxo);
 
         setNome(fluxo.nome ?? '');
         setAtivo(estaAtivo(fluxo?.ativo));
         setEtapas(etapasPersistidas);
         setGatilhosAtivos(gatilhosPersistidos);
+        setAnuncioId(anuncioIdPersistido);
         setHorario(horarioPersistido);
         setPausasAtivas(prepararPausas(etapasPersistidas));
         setDadosBase(capturarEstado({
@@ -85,6 +89,7 @@ export default function useEditorFluxo({ fluxo = null, suportaMidia = false, pod
             ativo: estaAtivo(fluxo?.ativo),
             etapas: etapasPersistidas,
             gatilhosAtivos: gatilhosPersistidos,
+            anuncioId: anuncioIdPersistido,
             horario: horarioPersistido,
         }));
         setEstadoGravacao('guardado');
@@ -725,6 +730,7 @@ export default function useEditorFluxo({ fluxo = null, suportaMidia = false, pod
             regras: Object.entries(gatilhosAtivos).map(([gatilho, ativoGatilho]) => ({
                 gatilho,
                 ativo: ativoGatilho,
+                ad_id: gatilho === 'mensagem_recebida' ? (anuncioId || null) : null,
             })),
             horario: {
                 ativo: horario.ativo,
@@ -787,6 +793,10 @@ export default function useEditorFluxo({ fluxo = null, suportaMidia = false, pod
     const nomeGatilhosSelecionados = gatilhos
         .filter((gatilho) => gatilhosAtivos[gatilho.valor])
         .map((gatilho) => gatilho.rotulo);
+    if (gatilhosAtivos.mensagem_recebida && anuncioId) {
+        const anuncio = anuncios.find((item) => item.ad_id === anuncioId);
+        nomeGatilhosSelecionados.push(`Anúncio: ${anuncio?.ad_title || anuncioId}`);
+    }
 
     return {
         criando,
@@ -794,6 +804,7 @@ export default function useEditorFluxo({ fluxo = null, suportaMidia = false, pod
         ativo,
         etapas,
         gatilhosAtivos,
+        anuncioId,
         horario,
         pausasAtivas,
         etapaSelecionada,
@@ -818,6 +829,7 @@ export default function useEditorFluxo({ fluxo = null, suportaMidia = false, pod
         selecionarEtapaSeguinte,
         alterarEtapa,
         alterarGatilho,
+        alterarAnuncio: setAnuncioId,
         alterarHorario,
         adicionarEtapa,
         adicionarCondicao,

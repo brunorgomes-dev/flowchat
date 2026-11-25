@@ -40,7 +40,7 @@ class Janela24hAgendamentoTest extends TestCase
                 'executar_em' => now()->addHour()->format('Y-m-d H:i:s'),
             ])
             ->assertSessionHasErrors([
-                'executar_em' => 'Este contato ainda não enviou mensagem. A Meta só permite mensagem livre até 24 horas após a última mensagem recebida.',
+                'executar_em' => 'Este contato ainda não enviou mensagem com horário conhecido. A janela de mensagens da Meta não pode ser confirmada.',
             ]);
 
         $this->assertDatabaseCount('agendamentos', 0);
@@ -91,7 +91,7 @@ class Janela24hAgendamentoTest extends TestCase
                 'executar_em' => now()->addHours(25)->format('Y-m-d H:i:s'),
             ])
             ->assertSessionHasErrors([
-                'executar_em' => 'A Meta só permite mensagem livre até 24 horas após a última mensagem do contato. Para este contato, o limite é 17/11/2026 09:00.',
+                'executar_em' => 'O horário escolhido está fora da janela de mensagens permitida pela Meta. Para este contato, o limite é 17/11/2026 09:00.',
             ]);
 
         $this->assertDatabaseCount('agendamentos', 0);
@@ -115,7 +115,7 @@ class Janela24hAgendamentoTest extends TestCase
                 'executar_em' => now()->addHours(24)->format('Y-m-d H:i:s'),
             ])
             ->assertSessionHasErrors([
-                'executar_em' => 'A Meta só permite mensagem livre até 24 horas após a última mensagem do contato. Para este contato, o limite é 17/11/2026 09:00.',
+                'executar_em' => 'O horário escolhido está fora da janela de mensagens permitida pela Meta. Para este contato, o limite é 17/11/2026 09:00.',
             ]);
 
         $this->assertDatabaseCount('agendamentos', 0);
@@ -371,7 +371,7 @@ class Janela24hAgendamentoTest extends TestCase
                 'executar_em' => '2026-03-29 14:00:00',
             ])
             ->assertSessionHasErrors([
-                'executar_em' => 'A Meta só permite mensagem livre até 24 horas após a última mensagem do contato. Para este contato, o limite é 29/03/2026 13:00.',
+                'executar_em' => 'O horário escolhido está fora da janela de mensagens permitida pela Meta. Para este contato, o limite é 29/03/2026 13:00.',
             ]);
 
         $this->assertDatabaseCount('agendamentos', 0);

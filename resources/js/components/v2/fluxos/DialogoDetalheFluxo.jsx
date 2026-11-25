@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { ArrowRight, FileText, Keyboard, PauseCircle, Split } from 'lucide-react';
 import { Aviso, Chip, Dialogo } from '@/components/v2/pecas';
-import { descreverEtapa, estaAtivo, rotulosGatilho } from './util';
+import { descreverEtapa, estaAtivo, rotuloRegra } from './util';
 
 /**
  * Prévia somente leitura de um fluxo: estado, gatilhos, janela e etapas.
@@ -38,7 +38,7 @@ export default function DialogoDetalheFluxo({ fluxo, aoFechar }) {
                             <Chip tom="atencao">Janela {fluxo.horario_inicio}–{fluxo.horario_fim}</Chip>
                         )}
                         {(fluxo.regras ?? []).filter((regra) => estaAtivo(regra.ativo)).map((regra) => (
-                            <Chip key={regra.gatilho} tom="marca">{rotulosGatilho[regra.gatilho] ?? regra.gatilho}</Chip>
+                            <Chip key={regra.gatilho}>{rotuloRegra(regra)}</Chip>
                         ))}
                     </div>
                     <ol className="max-h-72 overflow-y-auto border border-[var(--v2-line)] v2-rolagem">

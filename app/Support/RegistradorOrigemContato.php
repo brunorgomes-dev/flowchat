@@ -22,6 +22,7 @@ class RegistradorOrigemContato
         array $referral,
         string $evento,
         ?string $mensagemInicial = null,
+        bool $contatoCriadoPelaOrigem = false,
     ): ?OrigemContato {
         if (! Schema::hasTable('origens_contato')) {
             return null;
@@ -35,7 +36,7 @@ class RegistradorOrigemContato
         $adId = $this->texto($referral['ad_id'] ?? null, 64);
         $categoria = $this->categoria($source, $adId);
 
-        $origem = OrigemContato::create([
+        $atributos = [
             'account_id' => $contato->account_id,
             'contato_id' => $contato->id,
             'evento' => $evento,
@@ -53,7 +54,16 @@ class RegistradorOrigemContato
             'video_url' => $this->texto($contexto['video_url'] ?? null),
             'mensagem_inicial' => $this->texto($mensagemInicial),
             'dados_brutos' => $referral,
-        ]);
+        ];
+
+        if (Schema::hasColumn('origens_contato', 'associada_em')) {
+            $atributos['associada_em'] = null;
+        }
+        if (Schema::hasColumn('origens_contato', 'contato_criado_pela_origem')) {
+            $atributos['contato_criado_pela_origem'] = $contatoCriadoPelaOrigem;
+        }
+
+        $origem = OrigemContato::create($atributos);
 
         return $origem;
     }

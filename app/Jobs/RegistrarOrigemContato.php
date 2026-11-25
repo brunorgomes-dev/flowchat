@@ -40,6 +40,7 @@ class RegistrarOrigemContato implements ShouldQueue
             $this->referral,
             $this->evento,
             $this->mensagemInicial,
+            $contato->wasRecentlyCreated,
         );
 
         if ($origem === null) {

@@ -335,6 +335,12 @@ export function prepararGatilhos(fluxo) {
     return estado;
 }
 
+export function prepararAnuncioId(fluxo) {
+    const regra = (fluxo?.regras ?? []).find((item) => item.gatilho === 'mensagem_recebida');
+
+    return typeof regra?.ad_id === 'string' ? regra.ad_id : '';
+}
+
 export function prepararPausas(etapas) {
     return etapas.map((etapa) => Number(etapa.pausa_segundos) > 0);
 }
@@ -372,7 +378,7 @@ export function converterSegundosDoInput(valor, unidade) {
     return unidade === 'minutos' ? Math.round(numero * 60) : Math.round(numero);
 }
 
-export function capturarEstado({ nome = '', ativo = false, etapas = [], gatilhosAtivos = {}, horario = {} }) {
+export function capturarEstado({ nome = '', ativo = false, etapas = [], gatilhosAtivos = {}, anuncioId = '', horario = {} }) {
     return {
         nome,
         ativo: Boolean(ativo),
@@ -399,6 +405,7 @@ export function capturarEstado({ nome = '', ativo = false, etapas = [], gatilhos
         regras: {
             novo_contato: Boolean(gatilhosAtivos.novo_contato),
             mensagem_recebida: Boolean(gatilhosAtivos.mensagem_recebida),
+            anuncio_id: anuncioId || '',
         },
         horario: {
             ativo: Boolean(horario.ativo),
@@ -414,6 +421,7 @@ export function estadosIguais(a, b) {
         && a.ativo === b.ativo
         && a.regras.novo_contato === b.regras.novo_contato
         && a.regras.mensagem_recebida === b.regras.mensagem_recebida
+        && a.regras.anuncio_id === b.regras.anuncio_id
         && a.horario.ativo === b.horario.ativo
         && a.horario.inicio === b.horario.inicio
         && a.horario.fim === b.horario.fim
@@ -427,6 +435,7 @@ export function estadoInicialDoFluxo(fluxo) {
         ativo: estaAtivo(fluxo?.ativo),
         etapas: prepararEtapas(fluxo),
         gatilhosAtivos: prepararGatilhos(fluxo),
+        anuncioId: prepararAnuncioId(fluxo),
         horario: prepararHorario(fluxo),
     });
 }

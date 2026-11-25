@@ -6,6 +6,7 @@ use App\Actions\Mensagens\AvaliarCondicaoDeHorario;
 use App\Actions\Mensagens\EnviarIndicadorDigitacao;
 use App\Actions\Mensagens\EnviarMidiaDaEtapa;
 use App\Actions\Mensagens\EnviarTextoDaEtapa;
+use App\Models\Contato;
 use App\Models\EtapaFluxo;
 use App\Models\ExecucaoFluxo;
 use App\Models\LogSistema;
@@ -84,6 +85,22 @@ class EnviarEtapaFluxo implements ShouldQueue
             LogSistema::create(['account_id' => $conta->id, 'evento' => 'fluxo_concluido', 'descricao' => "Execução {$execucao->id} concluída"]);
 
             return;
+        }
+
+        // Não envia mensagens livres fora da janela aberta pela última
+        // mensagem recebida ou pelo anúncio associado ao primeiro contato.
+        if (Contato::janelaDeMensagemLivreDisponivel()) {
+            $limiteJanela = $contato->limiteDaJanelaDeMensagemLivre();
+            if ($limiteJanela === null || now()->greaterThanOrEqualTo($limiteJanela)) {
+                $this->encerrarExecucaoComFalha(
+                    $execucao,
+                    $conta->id,
+                    (int) $etapa->ordem,
+                    'janela de mensagens da Meta encerrada ou sem horário de abertura conhecido',
+                );
+
+                return;
+            }
         }
 
         if ($etapa->ehCondicaoHorario()) {

@@ -5,6 +5,14 @@ export const rotulosGatilho = {
     mensagem_recebida: 'Mensagem recebida',
 };
 
+export function rotuloRegra(regra) {
+    const rotulo = rotulosGatilho[regra.gatilho] ?? regra.gatilho;
+
+    return regra.gatilho === 'mensagem_recebida' && regra.ad_id
+        ? `${rotulo} · anúncio ${regra.ad_id}`
+        : rotulo;
+}
+
 export function estaAtivo(valor) {
     return valor === true || valor === 1 || valor === '1';
 }

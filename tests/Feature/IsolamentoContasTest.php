@@ -190,6 +190,60 @@ class IsolamentoContasTest extends TestCase
         Queue::assertPushed(EnviarEtapaFluxo::class, 1);
     }
 
+    public function test_mensagem_recebida_nao_inicia_fluxo_enquanto_execucao_manual_esta_aberta(): void
+    {
+        $utilizador = User::factory()->create();
+        $conta = $utilizador->account;
+        $manual = $conta->fluxos()->create(['nome' => 'Manual', 'ativo' => true]);
+        $manual->etapas()->create(['ordem' => 1, 'texto' => 'Manual', 'pausa_segundos' => 0]);
+        $automatico = $conta->fluxos()->create(['nome' => 'Automático', 'ativo' => true]);
+        $automatico->etapas()->create(['ordem' => 1, 'texto' => 'Automático', 'pausa_segundos' => 0]);
+        $automatico->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
+        $contato = $conta->contatos()->create(['psid' => 'psid-manual-mensagem']);
+        Queue::fake();
+
+        $this->actingAs($utilizador)->post('/execucoes/manuais', [
+            'fluxo_id' => $manual->id,
+            'contato_id' => $contato->id,
+        ])->assertRedirect();
+
+        (new ProcessarMensagemEntrante($conta->id, $contato->psid, 'Olá', now()->getTimestampMs()))->handle();
+
+        $this->assertSame(1, ExecucaoFluxo::where('contato_id', $contato->id)->count());
+        $this->assertSame($manual->id, ExecucaoFluxo::where('contato_id', $contato->id)->value('fluxo_id'));
+        Queue::assertPushed(EnviarEtapaFluxo::class, 1);
+    }
+
+    public function test_agendamento_nao_inicia_fluxo_diferente_com_execucao_aberta_por_mensagem(): void
+    {
+        $utilizador = User::factory()->create();
+        $conta = $utilizador->account;
+        $automatico = $conta->fluxos()->create(['nome' => 'Automático', 'ativo' => true]);
+        $automatico->etapas()->create(['ordem' => 1, 'texto' => 'Automático', 'pausa_segundos' => 0]);
+        $automatico->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
+        $agendado = $conta->fluxos()->create(['nome' => 'Agendado', 'ativo' => true]);
+        $agendado->etapas()->create(['ordem' => 1, 'texto' => 'Agendado', 'pausa_segundos' => 0]);
+        $contato = $conta->contatos()->create([
+            'psid' => 'psid-mensagem-agendamento',
+            'ultima_mensagem_recebida_em' => now(),
+        ]);
+        $agendamento = $conta->agendamentos()->create([
+            'fluxo_id' => $agendado->id,
+            'contato_id' => $contato->id,
+            'executar_em' => now()->subMinute(),
+            'estado' => 'pendente',
+        ]);
+        Queue::fake();
+
+        (new ProcessarMensagemEntrante($conta->id, $contato->psid, 'Olá', now()->getTimestampMs()))->handle();
+        (new ExecutarAgendamento($agendamento->id))->handle();
+
+        $this->assertSame(1, ExecucaoFluxo::where('contato_id', $contato->id)->count());
+        $this->assertSame($automatico->id, ExecucaoFluxo::where('contato_id', $contato->id)->value('fluxo_id'));
+        $this->assertSame('falhou', $agendamento->fresh()->estado);
+        Queue::assertPushed(EnviarEtapaFluxo::class, 1);
+    }
+
     public function test_enviar_etapa_fluxo_nao_envia_quando_fluxo_pertence_a_outra_conta(): void
     {
         $utilizadorA = User::factory()->create();
@@ -345,7 +399,7 @@ class IsolamentoContasTest extends TestCase
         ]);
         Queue::fake();
 
-        (new ProcessarMensagemEntrante($contaA->id, $psid, 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($contaA->id, $psid, 'Olá', now()->getTimestampMs()))->handle();
 
         $this->assertSame(2, Contato::count());
         $this->assertDatabaseMissing('execucoes_fluxo', ['account_id' => $contaA->id]);

@@ -34,7 +34,7 @@ class ExecucaoFluxoTest extends TestCase
         ]);
         $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
-        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá', now()->getTimestampMs()))->handle();
 
         // Contato identificado e salvo, mensagem recebida registrada
         $this->assertDatabaseHas('contatos', ['psid' => '12345']);
@@ -66,13 +66,13 @@ class ExecucaoFluxoTest extends TestCase
         $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
         // Primeira execução: fluxo já concluído (uma etapa, queue sync)
-        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá', now()->getTimestampMs()))->handle();
 
         // Fluxo com duas etapas para a segunda parte do teste
         $fluxo->etapas()->create(['ordem' => 2, 'texto' => 'Segunda mensagem', 'pausa_segundos' => 0]);
         ExecucaoFluxo::first()->update(['concluida_em' => null, 'etapa_atual' => 1]);
 
-        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'De novo'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'De novo', now()->getTimestampMs()))->handle();
 
         // Execução em andamento não gera segunda execução
         $this->assertSame(1, ExecucaoFluxo::where('contato_id', 1)->count());
@@ -90,7 +90,7 @@ class ExecucaoFluxoTest extends TestCase
         $novo->etapas()->create(['ordem' => 1, 'texto' => 'Mensagem do fluxo novo', 'pausa_segundos' => 0]);
         $novo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
-        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá', now()->getTimestampMs()))->handle();
 
         $this->assertSame(1, ExecucaoFluxo::count());
         $this->assertSame($antigo->id, ExecucaoFluxo::first()->fluxo_id);
@@ -137,7 +137,7 @@ class ExecucaoFluxoTest extends TestCase
         $fluxo->etapas()->create(['ordem' => 1, 'texto' => 'Primeira mensagem', 'pausa_segundos' => 0]);
         $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
-        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá', now()->getTimestampMs()))->handle();
 
         $this->assertSame(0, Mensagem::where('direcao', 'enviada')->count());
         $this->assertSame(1, LogSistema::where('evento', 'erro_envio')->count());
@@ -161,7 +161,7 @@ class ExecucaoFluxoTest extends TestCase
         $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
         $textoRecebido = 'Conteúdo confidencial recebido do contato';
-        (new ProcessarMensagemEntrante($this->conta->id, '12345', $textoRecebido))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', $textoRecebido, now()->getTimestampMs()))->handle();
 
         foreach (LogSistema::all() as $log) {
             $this->assertStringNotContainsString($textoRecebido, $log->descricao);
@@ -181,7 +181,7 @@ class ExecucaoFluxoTest extends TestCase
         $fluxo->etapas()->create(['ordem' => 1, 'texto' => 'Primeira mensagem', 'pausa_segundos' => 0]);
         $fluxo->regras()->create(['gatilho' => 'mensagem_recebida', 'ativo' => true]);
 
-        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá'))->handle();
+        (new ProcessarMensagemEntrante($this->conta->id, '12345', 'Olá', now()->getTimestampMs()))->handle();
 
         Http::assertNothingSent();
         $this->assertSame(0, Mensagem::where('direcao', 'enviada')->count());

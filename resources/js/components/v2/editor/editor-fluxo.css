@@ -249,6 +249,11 @@
     background: var(--v2-surface);
 }
 
+.v2-editor-fluxo__anuncio {
+    width: min(100%, 32rem);
+    margin-top: 1rem;
+}
+
 .v2-editor-fluxo__botao-gatilho[aria-pressed='true'] .v2-editor-fluxo__caixa-marcacao,
 .v2-editor-fluxo__botao-opcao[aria-pressed='true'] .v2-editor-fluxo__caixa-marcacao {
     border-color: var(--v2-primario);

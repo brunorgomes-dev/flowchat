@@ -16,7 +16,7 @@ class ProcessarMensagemEntrante implements ShouldQueue
      * Create a new job instance.
      *
      * O timestamp do evento chega em milissegundos, como enviado pela Meta.
-     * Quando ele está ausente ou fora da faixa válida, a janela de 24 horas
+     * Quando ele está ausente ou fora da faixa válida, a janela da Meta
      * não é renovada (o contato fica sem janela conhecida); eventos sem
      * objeto de mensagem (read/delivery) usam mensagemRecebida = false.
      */

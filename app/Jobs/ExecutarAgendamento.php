@@ -8,6 +8,7 @@ use App\Models\ExecucaoFluxo;
 use App\Models\LogSistema;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 
 class ExecutarAgendamento implements ShouldQueue
 {
@@ -23,11 +24,31 @@ class ExecutarAgendamento implements ShouldQueue
      */
     public function handle(): void
     {
-        $agendamento = Agendamento::with(['account', 'fluxo', 'contato'])->find($this->agendamentoId);
-        if (! $agendamento || $agendamento->estado !== 'pendente') {
+        $referencia = Agendamento::query()->find($this->agendamentoId);
+        if ($referencia === null) {
             return;
         }
 
+        DB::transaction(function () use ($referencia): void {
+            $contato = Contato::query()->lockForUpdate()->find($referencia->contato_id);
+            if ($contato === null) {
+                return;
+            }
+
+            $agendamento = Agendamento::with(['account', 'fluxo', 'contato'])
+                ->lockForUpdate()
+                ->find($this->agendamentoId);
+
+            if ($agendamento === null || $agendamento->estado !== 'pendente') {
+                return;
+            }
+
+            $this->executarComContatoBloqueado($agendamento);
+        });
+    }
+
+    private function executarComContatoBloqueado(Agendamento $agendamento): void
+    {
         if ($agendamento->account === null
             || (int) $agendamento->fluxo?->account_id !== (int) $agendamento->account_id
             || (int) $agendamento->contato?->account_id !== (int) $agendamento->account_id) {
@@ -62,16 +83,15 @@ class ExecutarAgendamento implements ShouldQueue
             LogSistema::create([
                 'account_id' => $agendamento->account_id,
                 'evento' => 'agendamento_nao_executado_janela_expirada',
-                'descricao' => "Agendamento {$agendamento->id} não iniciou o fluxo {$agendamento->fluxo->nome}: janela de 24 horas da Meta expirada para o PSID {$agendamento->contato->psid}",
+                'descricao' => "Agendamento {$agendamento->id} não iniciou o fluxo {$agendamento->fluxo->nome}: janela de mensagens da Meta expirada para o PSID {$agendamento->contato->psid}",
             ]);
 
             return;
         }
 
-        // Não inicia uma segunda execução concorrente do mesmo fluxo para o
-        // contato; o propósito do agendamento já está sendo cumprido por ela
+        // A mesma trava por contato é usada pelos inícios manuais e por
+        // mensagens recebidas; não permite execuções simultâneas de fluxos distintos.
         $emAndamento = ExecucaoFluxo::where('contato_id', $agendamento->contato_id)
-            ->where('fluxo_id', $agendamento->fluxo_id)
             ->whereNull('concluida_em')
             ->exists();
 
@@ -113,7 +133,7 @@ class ExecutarAgendamento implements ShouldQueue
     }
 
     /**
-     * Indica se o agendamento venceu a janela de 24 horas da Meta. Quando a
+     * Indica se o agendamento venceu a janela de mensagens da Meta. Quando a
      * coluna existe e o contato nunca teve mensagem registrada, falha
      * fechado: sem instante conhecido não há janela válida. Apenas quando a
      * coluna ainda não existe o comportamento anterior é preservado.

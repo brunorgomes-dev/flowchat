@@ -8,8 +8,8 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 
 /**
- * Janela de 24 horas da Meta: quando ela está disponível no banco e qual o
- * instante registrado da última mensagem recebida.
+ * Janela padrão de 24 horas da Meta, com extensão de até 7 dias quando a
+ * primeira mensagem após um anúncio Click-to-Messenger foi associada.
  */
 final class JanelaDeMensagemLivre
 {
@@ -25,7 +25,7 @@ final class JanelaDeMensagemLivre
 
     /**
      * Registra o instante da última mensagem recebida, base da janela de
-     * 24 horas. Usa o timestamp do evento (e não o momento do processamento)
+     * mensagens. Usa o timestamp do evento (e não o momento do processamento)
      * e nunca retrocede a janela quando um evento chega fora de ordem. Sem
      * timestamp de evento válido, a janela não é renovada.
      */

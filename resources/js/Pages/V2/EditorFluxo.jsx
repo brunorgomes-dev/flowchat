@@ -20,6 +20,7 @@ export default function EditorFluxoV2({
     podeCondicaoHorario = false,
     suportaMidia = false,
     fusoConta = null,
+    anuncios = [],
 }) {
     const {
         criando,
@@ -27,6 +28,7 @@ export default function EditorFluxoV2({
         ativo,
         etapas,
         gatilhosAtivos,
+        anuncioId,
         horario,
         pausasAtivas,
         etapaSelecionada,
@@ -50,6 +52,7 @@ export default function EditorFluxoV2({
         selecionarEtapaSeguinte,
         alterarEtapa,
         alterarGatilho,
+        alterarAnuncio,
         alterarHorario,
         adicionarEtapa,
         adicionarCondicao,
@@ -73,7 +76,7 @@ export default function EditorFluxoV2({
         selecionarAnexo,
         removerAnexo,
         salvar,
-    } = useEditorFluxo({ fluxo, suportaMidia, podeCondicaoHorario });
+    } = useEditorFluxo({ fluxo, suportaMidia, podeCondicaoHorario, anuncios });
 
     return (
         <>
@@ -87,6 +90,9 @@ export default function EditorFluxoV2({
                     aoAlternarAtivo={alterarAtivo}
                     gatilhosAtivos={gatilhosAtivos}
                     aoAlterarGatilho={alterarGatilho}
+                    anuncios={anuncios}
+                    anuncioId={anuncioId}
+                    aoAlterarAnuncio={alterarAnuncio}
                     horario={horario}
                     aoAlterarHorario={alterarHorario}
                 />

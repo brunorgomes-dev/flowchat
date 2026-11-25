@@ -127,7 +127,7 @@ class MidiaFluxoTest extends TestCase
             'https://graph.facebook.com/v23.0/me/messages' => Http::response(['message_id' => 'm_texto']),
         ]);
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-texto', 'oi'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-texto', 'oi', now()->getTimestampMs()))->handle();
 
         Http::assertSent(fn (ClientRequest $requisicao) => $requisicao->url() === 'https://graph.facebook.com/v23.0/me/messages'
             && ($requisicao['message']['text'] ?? null) === 'Mensagem de texto');
@@ -177,7 +177,7 @@ class MidiaFluxoTest extends TestCase
             return Http::response(['message_id' => 'm_midia']);
         });
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-midia', 'primeira'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-midia', 'primeira', now()->getTimestampMs()))->handle();
 
         $etapa = EtapaFluxo::query()->firstOrFail();
         $this->assertSame('att-1', $etapa->anexo_attachment_id);
@@ -200,7 +200,7 @@ class MidiaFluxoTest extends TestCase
             'anexo_nome_original' => 'capa.png',
         ]);
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-midia', 'segunda'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-midia', 'segunda', now()->getTimestampMs()))->handle();
 
         $this->assertCount(1, Http::recorded(fn (ClientRequest $requisicao) => str_contains($requisicao->url(), '/message_attachments')));
         Http::assertSentCount(3);
@@ -257,7 +257,7 @@ class MidiaFluxoTest extends TestCase
             return Http::response(['message_id' => 'm-'.$tipo]);
         });
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-'.$tipo, 'oi'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-'.$tipo, 'oi', now()->getTimestampMs()))->handle();
 
         $etapa = EtapaFluxo::query()->firstOrFail();
         $this->assertSame($tipo, $etapa->tipo_conteudo);
@@ -377,7 +377,7 @@ class MidiaFluxoTest extends TestCase
             ], 400),
         ]);
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-falha', 'oi'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-falha', 'oi', now()->getTimestampMs()))->handle();
 
         $this->assertDatabaseMissing('mensagens', [
             'direcao' => 'enviada',
@@ -426,7 +426,7 @@ class MidiaFluxoTest extends TestCase
             ], 400),
         ]);
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-envio', 'oi'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-envio', 'oi', now()->getTimestampMs()))->handle();
 
         $this->assertDatabaseMissing('mensagens', ['direcao' => 'enviada', 'tipo_conteudo' => 'video']);
         $this->assertNotNull(ExecucaoFluxo::query()->firstOrFail()->concluida_em);
@@ -474,7 +474,7 @@ class MidiaFluxoTest extends TestCase
             return Http::response(['message_id' => 'm-retry']);
         });
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-retry', 'oi'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-retry', 'oi', now()->getTimestampMs()))->handle();
 
         $this->assertSame(2, $uploads);
         $this->assertSame(2, $envios);
@@ -512,7 +512,7 @@ class MidiaFluxoTest extends TestCase
             'https://graph.facebook.com/v23.0/me/messages' => Http::response(['message_id' => 'm-pagina']),
         ]);
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-pagina', 'oi'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-pagina', 'oi', now()->getTimestampMs()))->handle();
 
         $etapa = EtapaFluxo::query()->firstOrFail();
         $this->assertSame('att-novo', $etapa->anexo_attachment_id);
@@ -541,7 +541,7 @@ class MidiaFluxoTest extends TestCase
         Http::preventStrayRequests();
         Http::fake();
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-sem-token', 'oi'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-sem-token', 'oi', now()->getTimestampMs()))->handle();
 
         Http::assertNothingSent();
         $this->assertDatabaseMissing('mensagens', ['direcao' => 'enviada']);
@@ -571,7 +571,7 @@ class MidiaFluxoTest extends TestCase
         Http::preventStrayRequests();
         Http::fake();
 
-        (new ProcessarMensagemEntrante($conta->id, 'psid-ausente', 'oi'))->handle();
+        (new ProcessarMensagemEntrante($conta->id, 'psid-ausente', 'oi', now()->getTimestampMs()))->handle();
 
         Http::assertNothingSent();
         $this->assertDatabaseMissing('mensagens', ['direcao' => 'enviada']);
