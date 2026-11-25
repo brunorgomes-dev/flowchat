@@ -120,7 +120,7 @@ describe('capturarEstado', () => {
             destino_nao_ordem: null,
             condicoes: [{ inicio: '08:00', fim: '09:00', destino_ordem: 2 }],
         });
-        expect(estado.regras).toEqual({ novo_contato: true, mensagem_recebida: false });
+        expect(estado.regras).toEqual({ novo_contato: true, mensagem_recebida: false, anuncio_id: '' });
         expect(estado.horario).toEqual({
             ativo: true,
             inicio: '08:00',
