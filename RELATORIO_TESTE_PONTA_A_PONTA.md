@@ -8,9 +8,9 @@
 
 ## Resumo
 
-**Apto com ressalvas.** A base automatizada de backend está verde (166 testes), o smoke de navegador passou (14/14) e build/lint não têm erros. Há **1 teste de unidade JS reprovado**, a concorrência MySQL não foi provada e nenhuma integração real com Meta/Cloud foi validada. O piloto real continua bloqueado até staging e liberações Meta.
+**Estado atual (27/11/2026): validação sintética local aprovada, com pendências operacionais.** O registro inicial abaixo foi atualizado pelos acompanhamentos: PHP 166/166, Vitest 19/19, Playwright 14/14, build/lint aprovados, Composer audit limpo e os três cenários do harness MySQL passaram em instância descartável. A execução original de 25/11 teve um teste JS falho e não tinha MySQL disponível; ambos foram resolvidos depois, conforme os acompanhamentos. Nenhuma integração real com Meta ou Cloud foi validada. O piloto com clientes continua pendente de staging, validação manual e liberações Meta.
 
-Cenários: aprovados **9 de 9 fases no escopo sintético** | reprovados **1** (teste JS) | bloqueados **3** (C real, G real, H concorrência) | não executados **itens manuais de staging**.
+Cenários: aprovados **9 de 9 fases no escopo sintético** | falhas atuais conhecidas **0** (D1 e D2 resolvidos) | bloqueados **integrações reais C/G com Meta** | não executados **itens manuais de staging**. Concorrência passou no harness MySQL local descartável; ainda não foi exercitada em Cloud.
 
 ## Comandos executados
 
@@ -36,8 +36,8 @@ Cenários: aprovados **9 de 9 fases no escopo sintético** | reprovados **1** (t
 | E — Execução/conversas | **Aprovado (sintético)** | 31 testes / 223 asserções: `ExecucaoFluxoTest`, `WebhookMessengerTest`, `ConversasPaginacaoTest`, `HistoricoContatoTest`, `DesignV2Test` — ponta a ponta, deduplicação por `mid`, eco/delivery, janela 24h, logs sem token/corpo | Envio real ao Messenger: **bloqueado** |
 | F — Agendamentos/fuso | **Aprovado (sintético)** | 21 testes / 61 asserções: `Janela24hAgendamentoTest`, `ExecucaoFluxoPresaTest` — janela, expiração, execução única, `fluxos:encerrar-presas` | `agendamentos:processar` e `schedule:work` não observados em execução real |
 | G — Anúncio | **Aprovado (sintético)** | 6 testes / 23 asserções: `GatilhoAnuncioFluxoTest` — referral inicia fluxo específico, dedup, fallback genérico, janela de 7 dias | **Anúncio real: Bloqueado (gate de política/gasto/Meta)** |
-| H — Isolamento/falhas | **Aprovado parcial** | 29 testes / 161 asserções: `IsolamentoContasTest`, `AdminContaSuspensaoTest` — acesso cruzado, suspensão (login, sessão, job, webhook, agendamento), falha de API, token ausente | **Concorrência MySQL: Bloqueado** (porta 3308 fechada); restart/redeploy: não executado |
-| I — Interface/regressão | **Aprovado parcial** | `npm run e2e`: 14/14 (painel, conversas, fluxos, editor, agendamento, ausência de 5xx/erros de console, login/logout); lint sem erros; build OK | **1 teste JS reprovado**; viewport móvel e tema escuro não percorridos |
+| H — Isolamento/falhas | **Aprovado no escopo sintético e no harness local** | 29 testes / 161 asserções: `IsolamentoContasTest`, `AdminContaSuspensaoTest`; acompanhamento de 27/11 validou `message-message`, `manual-message` e `schedule-message`, uma execução cada | Restart/redeploy e concorrência em Cloud: não executados |
+| I — Interface/regressão | **Aprovado parcial** | `npm run e2e`: 14/14; lint sem erros; build OK; acompanhamento D1 confirma `npm test`: 19/19 | Viewport móvel e tema escuro não percorridos |
 
 ## Defeitos encontrados
 
@@ -56,7 +56,7 @@ Cenários: aprovados **9 de 9 fases no escopo sintético** | reprovados **1** (t
 
 1. **Nenhuma chamada real à Meta.** OAuth, Graph API, webhook assinado e referral foram simulados com `Http::fake`/payloads. Isso prova o comportamento do app, não a integração.
 2. **`npm run e2e` executa `migrate:fresh`.** Contido porque o `playwright.config.js` fixa `DB_DATABASE` em `database/e2e.sqlite` e o `E2eSeeder` recusa outro caminho. Esse comando **não deve ser reaproveitado** em staging/Cloud.
-3. **Concorrência real não provada.** O harness exige MySQL 8.4 descartável em `127.0.0.1:3308` (`flowchat_concurrency_test`/`flowchat_test`); a porta estava fechada e não foi provisionada. Nenhum container foi iniciado.
+3. **Concorrência validada localmente, ainda não em Cloud.** O harness passou em MySQL 8.4.11 descartável em `127.0.0.1:3308`, conforme acompanhamento de 27/11. Restart/redeploy e comportamento sob concorrência no ambiente Cloud continuam sem validação.
 4. **`APP_DEBUG=true` no `.env` local.** Aceitável aqui; staging precisa de `APP_DEBUG=false`.
 5. **Credenciais de teste versionadas** (`e2e@example.test`/`senha-e2e`) e senha demo: uso restrito a banco descartável/local; nunca em staging.
 6. **Cobertura parcial de fuso/DST** e ausência de teste dedicado para reutilização de sessão encerrada.
@@ -64,7 +64,7 @@ Cenários: aprovados **9 de 9 fases no escopo sintético** | reprovados **1** (t
 
 ## Bloqueios de Cloud e Meta
 
-- **Laravel Cloud/staging:** não provisionado (sem `.laravel-cloud/`, CLI ou ambiente). Faltam URL HTTPS, `APP_KEY`, worker, scheduler e armazenamento persistente. A mídia usa disco local (`storage/app/private/flowchat/etapas/{account_id}`), o que exige volume persistente ou object storage — decisão de infraestrutura, não apenas configuração.
+- **Laravel Cloud/staging:** não provisionado. O projeto requer PHP 8.3+ e Laravel 13; o código ainda usa disco `local` para mídia e não declara o adaptador S3 (`league/flysystem-aws-s3-v3`). `ArmazenamentoMidia` usa caminhos absolutos/`response()->file`, então mudar apenas `FILESYSTEM_DISK` não basta: adaptar acesso e entrega dos arquivos para storage privado remoto, preservando autorização por conta. Planejar banco, `APP_KEY`/segredos, HTTPS, worker e scheduler. O provisionamento fica para depois da orientação jurídica.
 - **Meta:** app de staging, testers/funções, Página controlada, callbacks OAuth/webhook, `MESSENGER_*` e política de privacidade publicada (aguardando revisão jurídica). Sem isso, fases C e G reais ficam **Bloqueado por acesso Meta**.
 - **Anúncio pago:** gate separado (conta de anúncio, Click-to-Messenger de teste, limite de gasto, participante ciente). Não iniciado.
 - **E-mail:** sem verificação/recuperação de senha; o piloto depende de convite por link.
@@ -78,19 +78,19 @@ Cenários: aprovados **9 de 9 fases no escopo sintético** | reprovados **1** (t
 
 ## Próximos passos
 
-1. [x] Resolver D1 e confirmar `npm test` (19/19).
-2. [x] Resolver D2 com Laravel 13.44.1; suíte PHP 166/166 e Composer audit limpo.
-3. Rodar o harness de concorrência em MySQL 8.4 descartável na porta 3308 (bloqueado até Docker/DB isolado estar disponível).
-4. Provisionar staging com HTTPS, worker, scheduler e armazenamento persistente de mídia.
-5. Liberar app/Página/testers e publicar a política de privacidade na Meta.
-6. Executar as fases manuais A–F e H em staging, com dados `E2E-` e evidências sanitizadas.
-7. Só então avaliar o gate da fase G (anúncio controlado, com limite de gasto).
+1. [x] D1 corrigido; `npm test`: 19/19.
+2. [x] D2 corrigido com Laravel 13.44.1; PHP 166/166 e Composer audit limpo.
+3. [x] Harness MySQL local descartável passou nos três cenários, em 27/11.
+4. [ ] Após orientação da advogada, preparar staging Cloud: decidir base limpa ou cópia de dados, implementar storage privado remoto compatível com a API atual de mídia, configurar banco/segredos, provisionar worker e scheduler.
+5. [ ] Com política revisada e publicada, concluir configuração e permissões do app Meta/Página/testers e validar OAuth/webhook reais.
+6. [x] Checklist de execução manual criada fora do repositório: `C:\Users\Brunno\Documents\Default Project\TESTES_MANUAIS_FLOWCHAT.html`. Executar após staging, registrando evidências sem dados sensíveis.
+7. [ ] Depois da validação manual e autorização Meta, avaliar o teste controlado do gatilho por anúncio.
 
 ## Conclusão
 
-**Apto com ressalvas para validação sintética local.** O núcleo funcional (cadastro por convite, sessões, fluxos, mídia, execução, webhook, janela de 24h, agendamentos, isolamento e gatilho por anúncio) está coberto no escopo sintético, e a interface principal não apresenta 5xx nem erros de console no smoke. D1 e D2 foram resolvidos no acompanhamento abaixo. Concorrência MySQL continua não provada e não houve validação real de staging ou Meta. **Não há base para declarar o sistema pronto para piloto com clientes reais** antes de staging, validação operacional e liberações Meta.
+**Apto para continuar preparação local; ainda não pronto para piloto com clientes reais.** O escopo sintético está verde, incluindo a concorrência no harness MySQL descartável. Ainda não há staging Cloud nem integração real com Meta; a mídia precisa ser adaptada para storage remoto privado, e reinício/redeploy ainda precisa ser validado. A checklist manual está pronta fora do repositório. A política e a configuração Meta aguardam a advogada; após isso, preparar staging e executar a checklist antes de qualquer piloto.
 
-## Acompanhamento dos achados — 25/11/2026
+## Acompanhamento dos achados — 25–27/11/2026
 
 - **D1 resolvido:** a expectativa de `capturarEstado` foi atualizada para incluir `anuncio_id: ''`, que faz parte do estado normalizado do editor. `npm test`: 19/19 aprovados.
 - **D2 resolvido:** advisory oficial [GHSA-63hm-g96r-2m2q](https://github.com/laravel/framework/security/advisories/GHSA-63hm-g96r-2m2q) corrigido a partir de Laravel 13.40.0; `laravel/framework` atualizado de 13.35.0 para 13.44.1 dentro da restrição já existente. A aplicação não usa `Concurrency::run`. `php artisan test --compact`: 166/166 aprovados; `composer audit`: nenhum advisory encontrado.
