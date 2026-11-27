@@ -94,5 +94,5 @@ Cenários: aprovados **9 de 9 fases no escopo sintético** | reprovados **1** (t
 
 - **D1 resolvido:** a expectativa de `capturarEstado` foi atualizada para incluir `anuncio_id: ''`, que faz parte do estado normalizado do editor. `npm test`: 19/19 aprovados.
 - **D2 resolvido:** advisory oficial [GHSA-63hm-g96r-2m2q](https://github.com/laravel/framework/security/advisories/GHSA-63hm-g96r-2m2q) corrigido a partir de Laravel 13.40.0; `laravel/framework` atualizado de 13.35.0 para 13.44.1 dentro da restrição já existente. A aplicação não usa `Concurrency::run`. `php artisan test --compact`: 166/166 aprovados; `composer audit`: nenhum advisory encontrado.
-- **Concorrência MySQL segue bloqueada:** Docker Desktop não estava disponível e `127.0.0.1:3308` recusou conexão. O harness não foi executado e nenhum container foi iniciado.
+- **Concorrência MySQL validada em 27/11/2026:** harness executado em MySQL 8.4.11 descartável, vinculado somente a `127.0.0.1:3308`, com `/var/lib/mysql` em tmpfs e sem volumes. Passaram `message-message`, `manual-message` e `schedule-message`, cada cenário com exatamente uma execução. Container removido após o teste; banco normal do FlowChat em `3307` não foi tocado.
 - Não houve deploy, provisionamento de Cloud, chamadas reais à Meta nem alteração de dados locais do MySQL `flowchat`.
